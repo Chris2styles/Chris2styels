@@ -1,4 +1,3 @@
-import React from 'react'
 import { useState } from "react";
 
 // IMAGES
@@ -1480,4 +1479,3 @@ export default function App() {
     </div>
   );
 }
-
