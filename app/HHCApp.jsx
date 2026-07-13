@@ -102,27 +102,6 @@ const ADDONS=[
   {id:"f1",cat:"Consultations",name:"Consultation",price:30},
 ]
 
-const TREATS=[
-  {name:"Sustenance Treatment",icon:"💧",tag:"Moisture",
-   short:"Helps keep hair hydrated, softer and more manageable.",
-   full:"Helps maintain moisture, softness and manageability. Supports dry or stressed hair.",note:"Dry or hard-to-manage hair"},
-  {name:"Olaplex Treatment",icon:"🔗",tag:"Structure",
-   short:"Helps support hair structure after colouring or heat.",
-   full:"Supports the internal structure of the hair, especially after colouring or heat styling.",note:"Colour-treated or heat-styled hair"},
-  {name:"K18 Treatment",icon:"✨",tag:"Repair",
-   short:"Helps support damaged or stressed hair.",
-   full:"Advanced repair treatment for damaged or stressed hair caused by heat or colouring.",note:"Damaged or over-processed hair"},
-  {name:"Deep Moisturising",icon:"🌿",tag:"Moisture",
-   short:"Helps restore moisture and reduce breakage.",
-   full:"Helps restore moisture levels in dry or dehydrated hair.",note:"Dry or dehydrated hair"},
-  {name:"Scalp Care",icon:"🌱",tag:"Scalp Health",
-   short:"Keeps the scalp clean, comfortable and balanced.",
-   full:"Scalp care keeps the scalp clean, comfortable and balanced.",note:"All hair types"},
-  {name:"Strengthening",icon:"💪",tag:"Strength",
-   short:"Supports hair structure when hair feels weak.",
-   full:"Used when hair feels weak or fragile to help support the hair structure.",note:"Weak or fragile hair"},
-];
-
 const MEMBERS=[
   {id:1,name:"Aisha Thompson",email:"aisha@email.com",phone:"07700 900123",pkg:"elite",status:"active",
    joined:"Jan 2025",next:"16 Jul 2025",used:1,total:1,
