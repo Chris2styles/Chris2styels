@@ -101,7 +101,6 @@ const ADDONS=[
   {id:"e15",cat:"Braids and Weaves",name:"Weave Take Out",price:25},
   {id:"f1",cat:"Consultations",name:"Consultation",price:30},
 ]
-const ACATS=[...new Set(ADDONS.map(a=>a.cat))];
 
 const TREATS=[
   {name:"Sustenance Treatment",icon:"💧",tag:"Moisture",
