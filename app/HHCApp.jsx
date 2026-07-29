@@ -101,7 +101,6 @@ const ADDONS=[
   {id:"e15",cat:"Braids and Weaves",name:"Weave Take Out",price:25},
   {id:"f1",cat:"Consultations",name:"Consultation",price:30},
 ]
-const ACATS=[...new Set(ADDONS.map(a=>a.cat))];
 
 const TREATS=[
   {name:"Sustenance Treatment",icon:"💧",tag:"Moisture",
@@ -209,130 +208,44 @@ const SMAP={
 
 function Pill({s}) {
   const d=SMAP[s]||SMAP.active;
-  return React.createElement("span",{style:{background:d.bg,color:d.color,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:2,fontFamily:BD}},d.label);
+  return <span style={{background:d.bg,color:d.color,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:2,fontFamily:BD}}>{d.label}</span>;
 }
 
 function PkgTag({p}) {
   const c={essential:G.silver,signature:G.gold,elite:G.goldLt}[p]||G.silver;
-  return React.createElement("span",{style:{background:G.graphite,color:c,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:2,textTransform:"uppercase",fontFamily:BD}},p);
+  return <span style={{background:G.graphite,color:c,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:2,textTransform:"uppercase",fontFamily:BD}}>{p}</span>;
 }
 
 function Logo({light,sz}) {
   sz=sz||26;
-  return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12}},
-    React.createElement("div",{style:{width:sz+4,height:sz+4,borderRadius:"50%",border:"1.5px solid "+G.gold,display:"flex",alignItems:"center",justifyContent:"center"}},
-      React.createElement("span",{style:{fontFamily:SR,fontSize:sz*0.56,color:G.gold,fontStyle:"italic"}},"C")
-    ),
-    React.createElement("div",null,
-      React.createElement("div",{style:{fontFamily:DP,fontSize:sz*0.6,color:light?G.white:"#1A1A1A",letterSpacing:2,textTransform:"uppercase",lineHeight:1}},"Chris 2 Styles"),
-      React.createElement("div",{style:{fontFamily:BD,fontSize:sz*0.34,color:G.gold,letterSpacing:3,textTransform:"uppercase",marginTop:2}},"Healthy Hair Club")
-    )
-  );
-}
-
-function Btn({children,onClick,full,ghost,danger,sm,disabled}) {
-  const bg=disabled?"#EEE":danger?"#FFF0F0":ghost?"transparent":"linear-gradient(135deg,"+G.goldLt+","+G.gold+")";
-  const co=disabled?"#AAA":danger?G.err:ghost?G.goldDk:"#1A1A1A";
-  const bd=ghost?"1px solid "+G.gold:danger?"1px solid #FFCDD2":"none";
-  return React.createElement("button",{
-    onClick:disabled?undefined:onClick,
-    style:{width:full?"100%":"auto",padding:sm?"9px 18px":"14px 28px",background:bg,color:co,border:bd,borderRadius:8,fontFamily:DP,fontWeight:700,fontSize:sm?11:13,letterSpacing:1.5,textTransform:"uppercase",cursor:disabled?"not-allowed":"pointer"}
-  },children);
-}
-
-const FAQS=[
-  {p:["which plan","best for me","recommend"],a:"Three plans:\n\nEssential (69/mo) — Priority booking, 10% discount, no free monthly service.\n\nSignature Care (99/mo) — 1 monthly maintenance appointment plus 15% off premium services. Most popular.\n\nElite (149/mo) — Full maintenance, style credit, free consultations and Birthday Glam."},
-  {p:["signature","99"],a:"Signature Care is 99 per month. Includes 1 monthly maintenance with hair assessment, shampoo, conditioning, deep moisturising, Sustenance/Olaplex/K18 when suitable, scalp care, trim if needed, basic styling and hair advice. Plus 15% off selected premium services."},
-  {p:["essential","69"],a:"Essential is 69 per month. Includes priority booking, members-only slots, 10% off styling and premium services, and healthy hair advice. No free monthly maintenance appointment."},
-  {p:["elite","149"],a:"Elite is 149 per month. Includes full monthly maintenance, 30-50 pounds style credit, priority appointments, free consultations, exclusive perks and Birthday Glam bonus."},
-  {p:["sustenance"],a:"The Sustenance Treatment helps maintain moisture, softness and manageability. Suitable for dry or hard-to-manage hair. Applied by your stylist when needed."},
-  {p:["olaplex"],a:"Olaplex helps support the internal structure of the hair, especially after colouring or heat styling. Your stylist will assess whether it is suitable at each visit."},
-  {p:["k18"],a:"K18 helps support damaged or stressed hair. It helps improve softness, manageability and overall condition over time."},
-  {p:["cancel"],a:"You can cancel anytime from your dashboard or by messaging us. Cancellations take effect at the end of your current billing month. No cancellation fees."},
-  {p:["payment fail","blocked"],a:"If your payment fails, booking access is temporarily paused. You will receive a notification to update your payment details. Once resolved, your access is automatically restored."},
-  {p:["roll over","unused"],a:"Unused monthly sessions do not automatically roll over. In exceptional circumstances your stylist may allow a manual exception."},
-  {p:["maintenance","monthly appoint"],a:"A maintenance appointment is personalised to your hair. It may include assessment, shampoo, conditioning, Sustenance/Olaplex/K18 when suitable, trim if needed, detangling, basic styling and hair advice."},
-  {p:["discount","percent"],a:"Discounts are applied automatically at checkout. Essential: 10% off. Signature: 15% off. Elite: 20% off plus style credit. No codes needed."},
-  {p:["why join","worth it"],a:"The Healthy Hair Club gives you priority booking, regular maintenance for healthier-looking hair, exclusive discounts, ongoing advice from your stylist, and members-only booking slots."},
-  {p:["speak","contact","help","human"],a:"Of course! Let me connect you with the salon.",esc:true},
-];
-
-function matchQ(input) {
-  const lo=input.toLowerCase();
-  for(let i=0;i<FAQS.length;i++){
-    for(let j=0;j<FAQS[i].p.length;j++){
-      if(lo.indexOf(FAQS[i].p[j])!==-1)return FAQS[i];
-    }
-  }
-  return null;
-}
-
-function Bot({onClose}) {
-  const [msgs,setMsgs]=useState([{r:"bot",t:"Hi! I am your Healthy Hair Club Assistant. Ask me about memberships, treatments, payments or bookings."}]);
-  const [inp,setInp]=useState("");
-  const [esc,setEsc]=useState(false);
-
-  function send(text) {
-    if(!text.trim())return;
-    const m=matchQ(text);
-    const bt=m?m.a:"Let me connect you with the salon so we can help you properly.";
-    if(!m||m.esc)setEsc(true);
-    setMsgs(p=>[...p,{r:"user",t:text},{r:"bot",t:bt}]);
-    setInp("");
-  }
-
   return (
-    <div style={{position:"fixed",bottom:20,right:20,zIndex:1000,width:340,maxWidth:"92vw",background:G.charcoal,border:"1px solid "+G.gold+"55",borderRadius:8,boxShadow:"0 20px 60px rgba(0,0,0,0.7)",display:"flex",flexDirection:"column",maxHeight:"70vh",fontFamily:BD}}>
-      <div style={{padding:"14px 18px",borderBottom:"1px solid "+G.graphite,display:"flex",justifyContent:"space-between",alignItems:"center",background:G.ink,borderRadius:"8px 8px 0 0"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:G.black,fontSize:14}}>✦</span></div>
-          <div><div style={{color:G.white,fontWeight:700,fontSize:14}}>HHC Assistant</div><div style={{color:G.ok,fontSize:11,fontWeight:700}}>Online now</div></div>
-        </div>
-        <button onClick={onClose} style={{background:"none",border:"none",color:G.silver,cursor:"pointer",fontSize:18}}>x</button>
+    <div style={{display:"flex",alignItems:"center",gap:12}}>
+      <div style={{width:sz+4,height:sz+4,borderRadius:"50%",border:"1.5px solid "+G.gold,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <span style={{fontFamily:SR,fontSize:sz*0.56,color:G.gold,fontStyle:"italic"}}>C</span>
       </div>
-      <div style={{flex:1,overflowY:"auto",padding:14,display:"flex",flexDirection:"column",gap:10,minHeight:160}}>
-        {msgs.map((m,i)=>(
-          <div key={i} style={{display:"flex",justifyContent:m.r==="user"?"flex-end":"flex-start"}}>
-            <div style={{maxWidth:"88%",padding:"10px 14px",borderRadius:m.r==="user"?"12px 12px 2px 12px":"12px 12px 12px 2px",background:m.r==="user"?"linear-gradient(135deg,"+G.goldLt+","+G.gold+")":G.graphite,color:m.r==="user"?G.black:G.smoke,fontSize:13,lineHeight:1.65,whiteSpace:"pre-line"}}>{m.t}</div>
-          </div>
-        ))}
-        {esc&&(
-          <div style={{background:G.ink,border:"1px solid "+G.gold+"44",borderRadius:8,padding:14}}>
-            <div style={{color:G.gold,fontSize:11,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:10}}>Connect with the salon</div>
-            {["Send a message","Request a callback","Request a consultation","Ask a stylist"].map(opt=>(
-              <button key={opt} onClick={()=>{setEsc(false);setMsgs(p=>[...p,{r:"bot",t:"Your request has been sent to Christine and the team. We will be in touch shortly!"}]);}} style={{display:"block",width:"100%",marginBottom:7,padding:"9px 14px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:4,color:G.smoke,fontSize:13,cursor:"pointer",textAlign:"left",fontFamily:BD}}>{opt}</button>
-            ))}
-          </div>
-        )}
-      </div>
-      {msgs.length<=2&&(
-        <div style={{padding:"0 12px 10px",display:"flex",gap:6,flexWrap:"wrap"}}>
-          {["Which plan for me?","What is in the 99 plan?","What does Olaplex do?","Can I cancel?"].map(s=>(
-            <button key={s} onClick={()=>send(s)} style={{padding:"5px 10px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:20,color:G.silver,fontSize:11,cursor:"pointer",fontFamily:BD}}>{s}</button>
-          ))}
-        </div>
-      )}
-      <div style={{padding:"10px 14px",borderTop:"1px solid "+G.graphite,display:"flex",gap:8}}>
-        <input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send(inp)} placeholder="Ask about your membership..." style={{flex:1,padding:"10px 12px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:4,color:G.white,fontSize:13,fontFamily:BD,outline:"none"}}/>
-        <button onClick={()=>send(inp)} style={{background:"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",border:"none",borderRadius:4,padding:"10px 14px",cursor:"pointer",color:G.black,fontWeight:700,fontSize:14}}>→</button>
+      <div>
+        <div style={{fontFamily:DP,fontSize:sz*0.6,color:light?G.white:"#1A1A1A",letterSpacing:2,textTransform:"uppercase",lineHeight:1}}>Chris 2 Styles</div>
+        <div style={{fontFamily:BD,fontSize:sz*0.34,color:G.gold,letterSpacing:3,textTransform:"uppercase",marginTop:2}}>Healthy Hair Club</div>
       </div>
     </div>
   );
 }
 
-function BotBtn({onClick}) {
+function Btn({children,onClick,full,ghost,danger,sm,disabled}) {
+  const bg=disabled?"#EEE":danger?"#FFF0F0"function Btn({children,onClick,full,ghost,danger,sm,disabled}) {
+  const bg=disabled?"#EEE":danger?"#FFF0F0":ghost?"transparent":"linear-gradient(135deg,"+G.goldLt+","+G.gold+")";
+  const co=disabled?"#AAA":danger?G.err:ghost?G.goldDk:"#1A1A1A";
+  const brd=ghost?"1px solid "+G.gold:danger?"1px solid #FFCDD2":"none";
   return (
-    <button onClick={onClick} style={{position:"fixed",bottom:20,right:20,zIndex:999,width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",border:"none",boxShadow:"0 8px 24px rgba(201,168,76,0.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column"}}>
-      <span style={{fontSize:20,color:G.black}}>✦</span>
-      <span style={{fontSize:8,color:G.black,fontWeight:700}}>HELP</span>
+    <button onClick={disabled?undefined:onClick}
+      style={{width:full?"100%":"auto",padding:sm?"9px 18px":"14px 28px",
+        background:bg,color:co,border:brd,borderRadius:8,
+        fontFamily:DP,fontWeight:700,fontSize:sm?11:13,letterSpacing:1.5,
+        textTransform:"uppercase",cursor:disabled?"not-allowed":"pointer"}}>
+      {children}
     </button>
   );
-}
-
-function TreatCard({t}) {
-  const [open,setOpen]=useState(false);
-  return (
-    <div style={{background:G.creamLt,borderRadius:10,border:"1px solid "+G.creamDk,overflow:"hidden"}}>
+}creamLt,borderRadius:10,border:"1px solid "+G.creamDk,overflow:"hidden"}}>
       <div onClick={()=>setOpen(!open)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 14px",cursor:"pointer"}}>
         <span style={{fontSize:22,flexShrink:0}}>{t.icon}</span>
         <div style={{flex:1}}><div style={{fontWeight:700,color:"#1A1A1A",fontSize:13}}>{t.name}</div><div style={{color:G.goldDk,fontSize:10,fontWeight:600,textTransform:"uppercase",marginTop:1}}>{t.tag}</div></div>
