@@ -232,20 +232,20 @@ function Logo({light,sz}) {
 }
 
 function Btn({children,onClick,full,ghost,danger,sm,disabled}) {
-  const bg=disabled?"#EEE":danger?"#FFF0F0"function Btn({children,onClick,full,ghost,danger,sm,disabled}) {
   const bg=disabled?"#EEE":danger?"#FFF0F0":ghost?"transparent":"linear-gradient(135deg,"+G.goldLt+","+G.gold+")";
   const co=disabled?"#AAA":danger?G.err:ghost?G.goldDk:"#1A1A1A";
   const brd=ghost?"1px solid "+G.gold:danger?"1px solid #FFCDD2":"none";
   return (
     <button onClick={disabled?undefined:onClick}
-      style={{width:full?"100%":"auto",padding:sm?"9px 18px":"14px 28px",
-        background:bg,color:co,border:brd,borderRadius:8,
-        fontFamily:DP,fontWeight:700,fontSize:sm?11:13,letterSpacing:1.5,
-        textTransform:"uppercase",cursor:disabled?"not-allowed":"pointer"}}>
+      style={{width:full?"100%":"auto",padding:sm?"9px 18px":"14px 28px",background:bg,color:co,border:brd,borderRadius:8,fontFamily:DP,fontWeight:700,fontSize:sm?11:13,letterSpacing:1.5,textTransform:"uppercase",cursor:disabled?"not-allowed":"pointer"}}>
       {children}
     </button>
   );
-}creamLt,borderRadius:10,border:"1px solid "+G.creamDk,overflow:"hidden"}}>
+}
+function TreatCard({t}) {
+  const [open,setOpen]=useState(false);
+  return (
+    <div style={{background:G.creamLt,borderRadius:10,border:"1px solid "+G.creamDk,overflow:"hidden"}}>
       <div onClick={()=>setOpen(!open)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 14px",cursor:"pointer"}}>
         <span style={{fontSize:22,flexShrink:0}}>{t.icon}</span>
         <div style={{flex:1}}><div style={{fontWeight:700,color:"#1A1A1A",fontSize:13}}>{t.name}</div><div style={{color:G.goldDk,fontSize:10,fontWeight:600,textTransform:"uppercase",marginTop:1}}>{t.tag}</div></div>
@@ -315,9 +315,6 @@ function Terms({onBack,showAccept,onAccept}) {
 function ClientLogin({onLogin}) {
   const [tab,setTab]=useState("login");
   const [showT,setShowT]=useState(false);
-  const [showForm,setShowForm]=useState(false);
-  const [name,setName]=useState('');
-  const [email,setEmail]=useState('');
   if(showT) return <Terms onBack={()=>setShowT(false)} showAccept={tab==="signup"} onAccept={()=>{setShowT(false);onLogin();}}/>;
   return (
     <div style={{minHeight:"100vh",position:"relative",fontFamily:BD,overflow:"hidden"}}>
@@ -369,6 +366,9 @@ function ClientLogin({onLogin}) {
 function ClientPackages({onSelect}) {
   const [sel,setSel]=useState(null);
   const [showT,setShowT]=useState(false);
+  const [showForm,setShowForm]=useState(false);
+  const [name,setName]=useState('');
+  const [email,setEmail]=useState('');
   if(showT) return <Terms onBack={()=>setShowT(false)}/>;
   return (
     <div style={{minHeight:"100vh",background:G.black,fontFamily:BD}}>
@@ -423,17 +423,19 @@ function ClientPackages({onSelect}) {
             {!showForm?(
               <Btn onClick={()=>setShowForm(true)}>Continue to Payment</Btn>
             ):(
-              <div style={{background:"#111",borderRadius:8,padding:24,maxWidth:380,margin:"0 auto",textAlign:"left"}}>
-                <div style={{color:"#C9A84C",fontSize:12,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:16}}>Your Details</div>
+              <div style={{background:G.charcoal,borderRadius:8,padding:24,maxWidth:380,margin:"0 auto",textAlign:"left"}}>
+                <div style={{color:G.gold,fontSize:12,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:16}}>Your Details</div>
                 <div style={{marginBottom:14}}>
-                  <div style={{color:"#999",fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Full Name</div>
-                  <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your full name" style={{width:"100%",padding:"12px 14px",background:"#272727",border:"1px solid #3A3A3A",borderRadius:4,color:"#FFF",fontSize:14,outline:"none",boxSizing:"border-box"}}/>
+                  <div style={{color:G.silver,fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Full Name</div>
+                  <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your full name"
+                    style={{width:"100%",padding:"12px 14px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:4,color:G.white,fontSize:14,fontFamily:BD,outline:"none",boxSizing:"border-box"}}/>
                 </div>
                 <div style={{marginBottom:20}}>
-                  <div style={{color:"#999",fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Email Address</div>
-                  <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" type="email" style={{width:"100%",padding:"12px 14px",background:"#272727",border:"1px solid #3A3A3A",borderRadius:4,color:"#FFF",fontSize:14,outline:"none",boxSizing:"border-box"}}/>
+                  <div style={{color:G.silver,fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Email Address</div>
+                  <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" type="email"
+                    style={{width:"100%",padding:"12px 14px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:4,color:G.white,fontSize:14,fontFamily:BD,outline:"none",boxSizing:"border-box"}}/>
                 </div>
-                <button disabled={!name||!email} onClick={()=>onSelect(sel,email,name)} style={{width:"100%",padding:"14px 0",background:(!name||!email)?"#EEE":"linear-gradient(135deg,#E2C97E,#C9A84C)",color:(!name||!email)?"#AAA":"#1A1A1A",border:"none",borderRadius:8,fontWeight:700,fontSize:13,letterSpacing:1.5,textTransform:"uppercase",cursor:(!name||!email)?"not-allowed":"pointer"}}>Pay Now with Stripe</button>
+                <Btn full disabled={!name||!email} onClick={()=>onSelect(sel,email,name)}>Pay Now with Stripe</Btn>
               </div>
             )}
             <p style={{color:G.dim,fontSize:11,marginTop:12}}>
@@ -1413,13 +1415,19 @@ export default function App() {
   if(view==="client"){
     if(cScr==="login") return <ClientLogin onLogin={()=>setCS("packages")}/>;
     if(cScr==="packages") return <ClientPackages onSelect={async(pkg,email,name)=>{
-    try{
-      const res=await fetch('/api/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({package:pkg,email:email,name:name})});
-      const data=await res.json();
-      if(data.url){window.location.href=data.url;}
-      else{alert('Payment error: '+(data.error||'Unknown'));}
-    }catch(err){alert('Connection error. Please try again.');}
-  }}/>;
+      try {
+        const res = await fetch('/api/create-checkout', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({package:pkg, email:email, name:name})
+        });
+        const data = await res.json();
+        if(data.url) { window.location.href = data.url; }
+        else { alert('Payment error: ' + (data.error||'Unknown error')); }
+      } catch(err) {
+        alert('Connection error. Please try again.');
+      }
+    }}/>;
     if(cScr==="booking") return <ClientBooking onBack={()=>setCS("dashboard")}/>;
     return <ClientDashboard onBook={()=>setCS("booking")} onLogout={()=>{setView("home");setCS("login");}}/>;
   }
