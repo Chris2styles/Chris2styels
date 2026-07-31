@@ -122,6 +122,8 @@ const TREATS=[
    short:"Supports hair structure when hair feels weak.",
    full:"Used when hair feels weak or fragile to help support the hair structure.",note:"Weak or fragile hair"},
 ];
+const ACATS=[...new Set(ADDONS.map(a=>a.cat))];
+
 
 const MEMBERS=[
   {id:1,name:"Aisha Thompson",email:"aisha@email.com",phone:"07700 900123",pkg:"elite",status:"active",
