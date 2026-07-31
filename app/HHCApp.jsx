@@ -1410,7 +1410,7 @@ function AdminDashboard({onLogout}) {
 }
 
 export default function App() {
-  const [view,setView]=useState("home");
+  const [view,setView]=useState("client");
   const [cScr,setCS]=useState("login");
   const [aScr,setAS]=useState("login");
 
