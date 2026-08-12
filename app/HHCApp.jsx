@@ -319,6 +319,26 @@ function Terms({onBack,showAccept,onAccept}) {
 function ClientLogin({onLogin}) {
   const [tab,setTab]=useState("login");
   const [showT,setShowT]=useState(false);
+  const [email,setLoginEmail]=useState("");
+  const [password,setPassword]=useState("");
+  const [name,setName]=useState("");
+  const [error,setError]=useState("");
+  const [loading,setLoading]=useState(false);
+
+  async function handleAuth() {
+    setLoading(true);setError("");
+    try {
+      if(tab==="login"){
+        const {error:e}=await supabase.auth.signInWithPassword({email,password});
+        if(e)setError(e.message);else onLogin();
+      } else {
+        const {error:e}=await supabase.auth.signUp({email,password,options:{data:{full_name:name}}});
+        if(e)setError(e.message);else onLogin();
+      }
+    } catch(e){setError("Something went wrong.");}
+    setLoading(false);
+  }
+
   if(showT) return <Terms onBack={()=>setShowT(false)} showAccept={tab==="signup"} onAccept={()=>{setShowT(false);onLogin();}}/>;
   return (
     <div style={{minHeight:"100vh",position:"relative",fontFamily:BD,overflow:"hidden"}}>
@@ -345,18 +365,19 @@ function ClientLogin({onLogin}) {
           {tab==="signup"&&(
             <div style={{marginBottom:16}}>
               <div style={{fontSize:10,color:G.silver,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Full Name</div>
-              <input placeholder="Your name" style={{width:"100%",padding:"13px 16px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:3,boxSizing:"border-box",color:G.white,fontSize:14,fontFamily:BD,outline:"none"}}/>
+              <input placeholder="Your name" value={name} onChange={e=>setName(e.target.value)} style={{width:"100%",padding:"13px 16px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:3,boxSizing:"border-box",color:G.white,fontSize:14,fontFamily:BD,outline:"none"}}/>
             </div>
           )}
           <div style={{marginBottom:16}}>
             <div style={{fontSize:10,color:G.silver,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Email Address</div>
-            <input type="email" placeholder="you@email.com" style={{width:"100%",padding:"13px 16px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:3,boxSizing:"border-box",color:G.white,fontSize:14,fontFamily:BD,outline:"none"}}/>
+            <input type="email" placeholder="you@email.com" value={email} onChange={e=>setLoginEmail(e.target.value)} style={{width:"100%",padding:"13px 16px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:3,boxSizing:"border-box",color:G.white,fontSize:14,fontFamily:BD,outline:"none"}}/>
           </div>
           <div style={{marginBottom:24}}>
             <div style={{fontSize:10,color:G.silver,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Password</div>
-            <input type="password" placeholder="Enter password" style={{width:"100%",padding:"13px 16px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:3,boxSizing:"border-box",color:G.white,fontSize:14,fontFamily:BD,outline:"none"}}/>
+            <input type="password" placeholder="Enter password" value={password} onChange={e=>setPassword(e.target.value)} style={{width:"100%",padding:"13px 16px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:3,boxSizing:"border-box",color:G.white,fontSize:14,fontFamily:BD,outline:"none"}}/>
           </div>
-          <Btn full onClick={()=>onLogin()}>{tab==="login"?"Sign In to My Account":"Create My Account"}</Btn>
+          {error&&<div style={{color:"#B71C1C",fontSize:13,marginBottom:12,padding:"10px 14px",background:"#FFEBEE",borderRadius:4}}>{error}</div>}
+          <Btn full onClick={handleAuth} disabled={loading}>{loading?"Please wait...":tab==="login"?"Sign In to My Account":"Create My Account"}</Btn>
           <p style={{textAlign:"center",fontSize:11,color:G.dim,marginTop:16,lineHeight:1.7}}>
             By joining you agree to our{" "}
             <span onClick={()=>setShowT(true)} style={{color:G.gold,cursor:"pointer",textDecoration:"underline"}}>Terms and Conditions</span>

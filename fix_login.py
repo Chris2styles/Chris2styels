@@ -1,15 +1,39 @@
 with open('app/HHCApp.jsx','r',encoding='utf-8') as f:
     c=f.read()
 
-# Add supabase import at top
-if 'supabase' not in c:
-    old='import React from "react";'
-    new='import React from "react";\nimport { createClient } from "@supabase/supabase-js";\nconst supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);'
-    c=c.replace(old,new,1)
-    print("Added Supabase!")
-else:
-    print("Supabase already there")
+old='''function ClientLogin({onLogin}) {
+  const [tab,setTab]=useState("login");
+  const [showT,setShowT]=useState(false);
+  if(showT) return <Terms onBack={()=>setShowT(false)} showAccept={tab==="signup"}'''
 
+new='''function ClientLogin({onLogin}) {
+  const [tab,setTab]=useState("login");
+  const [showT,setShowT]=useState(false);
+  const [email,setLoginEmail]=useState("");
+  const [password,setPassword]=useState("");
+  const [name,setName]=useState("");
+  const [error,setError]=useState("");
+  const [loading,setLoading]=useState(false);
+
+  async function handleAuth() {
+    setLoading(true);setError("");
+    try {
+      if(tab==="login"){
+        const {error:e}=await supabase.auth.signInWithPassword({email,password});
+        if(e)setError(e.message);else onLogin();
+      } else {
+        const {error:e}=await supabase.auth.signUp({email,password,options:{data:{full_name:name}}});
+        if(e)setError(e.message);else onLogin();
+      }
+    } catch(e){setError("Something went wrong.");}
+    setLoading(false);
+  }
+
+  if(showT) return <Terms onBack={()=>setShowT(false)} showAccept={tab==="signup"}'''
+
+print("Found:",old[:50] in c)
+c=c.replace(old,new,1)
+print("Fixed:",new[:50] in c)
 with open('app/HHCApp.jsx','w',encoding='utf-8') as f:
     f.write(c)
 print("Done!")
