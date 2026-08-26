@@ -1095,6 +1095,41 @@ function AdminDashboard({onLogout}) {
   const [adds,setAdds]=useState(ADDONS);
   const [newA,setNewA]=useState({name:"",price:"",cat:ACATS[0]});
   const [aCat,setACat]=useState(ACATS[0]);
+  const [realMembers,setRealMembers]=useState([]);
+  const [loading,setLoading]=useState(true);
+
+  React.useEffect(()=>{
+    async function loadMembers(){
+      try {
+        const {data:clients}=await supabase.from('clients').select('*');
+        const {data:memberships}=await supabase.from('memberships').select('*');
+        if(clients&&memberships){
+          const merged=clients.map(cl=>{
+            const mem=memberships.find(m=>m.client_id===cl.id)||{};
+            return {
+              id:cl.id,
+              name:cl.full_name,
+              email:cl.email,
+              phone:cl.phone||'',
+              pkg:mem.package||'essential',
+              status:mem.status||'active',
+              joined:new Date(cl.created_at).toLocaleDateString('en-GB',{month:'short',year:'numeric'}),
+              next:'See Stripe',
+              used:mem.sessions_used||0,
+              total:mem.sessions_total||0,
+              notes:'',
+              visits:[],
+            };
+          });
+          setRealMembers(merged);
+        }
+      } catch(e){console.error('Error loading members:',e);}
+      setLoading(false);
+    }
+    loadMembers();
+  },[]);
+
+  const displayMembers = realMembers.length > 0 ? realMembers : MEMBERS;
   const [inbox,setInbox]=useState([
     {id:1,client:"Monique James",type:"message",msg:"Hi Christine, I had a payment issue — is my membership still active?",time:"Today 9:42am",read:false},
     {id:2,client:"Priya Patel",type:"callback",msg:"Requested a callback about pausing her membership.",time:"Today 8:15am",read:false},
@@ -1111,12 +1146,13 @@ function AdminDashboard({onLogout}) {
   const stylists=[{id:"s1",name:"Christine",color:G.gold},{id:"s2",name:"Stylist 2",color:"#7EC8C8"}];
   const [selSt,setSelSt]=useState("all");
 
-  const active=MEMBERS.filter(m=>m.status==="active").length;
-  const failed=MEMBERS.filter(m=>m.status==="payment_failed").length;
-  const paused=MEMBERS.filter(m=>m.status==="paused").length;
-  const revenue=MEMBERS.filter(m=>m.status==="active").reduce((s,m)=>{const p=PKGS.find(pk=>pk.id===m.pkg);return s+(p?p.price:0);},0);
+  const membersToUse = realMembers.length > 0 ? realMembers : MEMBERS;
+  const active=membersToUse.filter(m=>m.status==="active").length;
+  const failed=membersToUse.filter(m=>m.status==="payment_failed").length;
+  const paused=membersToUse.filter(m=>m.status==="paused").length;
+  const revenue=membersToUse.filter(m=>m.status==="active").reduce((s,m)=>{const p=PKGS.find(pk=>pk.id===m.pkg);return s+(p?p.price:0);},0);
   const unread=inbox.filter(m=>!m.read).length;
-  const filtered=filt==="all"?MEMBERS:MEMBERS.filter(m=>m.status===filt);
+  const filtered=filt==="all"?membersToUse:membersToUse.filter(m=>m.status===filt);
 
   function Card({id,icon,title,sub,children}) {
     const open=openSec===id;
