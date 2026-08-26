@@ -1438,15 +1438,9 @@ export default function App({startAdmin=false}) {
   const [aScr,setAS]=useState("login");
 
   if(view==="landing"){
-    const LandingPage = require('./HHCApp').LandingPage || (() => null);
-    return <ClientPackages onSelect={async(pkg,email,name)=>{
-      try {
-        const res = await fetch('/api/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({package:pkg,email:email,name:name})});
-        const data = await res.json();
-        if(data.url){window.location.href=data.url;}
-        else{alert('Payment error: '+(data.error||'Unknown error'));}
-      } catch(err){alert('Connection error. Please try again.');}
-    }} isLanding={true} onSignIn={()=>{setView("client");setCS("login");}}/>;
+    return <LandingPageComp 
+      onJoin={(pkg)=>{setView("client");setCS("packages");}}
+      onSignIn={()=>{setView("client");setCS("login");}}/>;
   }
 
   if(view==="client"){
