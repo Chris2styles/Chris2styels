@@ -1482,7 +1482,7 @@ export default function App({startAdmin=false}) {
   }
 
   if(view==="client"){
-    if(cScr==="login") return <ClientLogin onLogin={(opts)=>setCS(opts&&opts.hasMembership?"dashboard":"packages")}/>;
+    if(cScr==="login") return <ClientLogin onLogin={()=>setCS("dashboard")}/>;
     if(cScr==="packages") return <ClientPackages onSelect={async(pkg,email,name)=>{
       try {
         const res = await fetch('/api/create-checkout', {
