@@ -330,8 +330,9 @@ function ClientLogin({onLogin}) {
     setLoading(true);setError("");
     try {
       if(tab==="login"){
-        const {error:e}=await supabase.auth.signInWithPassword({email,password});
-        if(e)setError(e.message);else onLogin();
+        const {error:e,data}=await supabase.auth.signInWithPassword({email,password});
+        if(e){setError(e.message);}
+        else{onLogin({hasMembership:true});}
       } else {
         const {error:e}=await supabase.auth.signUp({email,password,options:{data:{full_name:name}}});
         if(e)setError(e.message);else onLogin();
@@ -1481,7 +1482,7 @@ export default function App({startAdmin=false}) {
   }
 
   if(view==="client"){
-    if(cScr==="login") return <ClientLogin onLogin={()=>setCS("packages")}/>;
+    if(cScr==="login") return <ClientLogin onLogin={(opts)=>setCS(opts&&opts.hasMembership?"dashboard":"packages")}/>;
     if(cScr==="packages") return <ClientPackages onSelect={async(pkg,email,name)=>{
       try {
         const res = await fetch('/api/create-checkout', {
