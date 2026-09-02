@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+content = '''import { NextResponse } from 'next/server'
 
 export async function POST(req) {
   try {
@@ -28,3 +28,8 @@ export async function POST(req) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
+'''
+
+with open('app/api/create-checkout/route.js','w',encoding='utf-8') as f:
+    f.write(content)
+print("Done!")
