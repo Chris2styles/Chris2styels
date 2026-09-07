@@ -514,7 +514,28 @@ function ClientPackages({onSelect}) {
 }
 
 function ClientDashboard({onBook,onLogout}) {
-  const mem={name:"Aisha Thompson",pkg:"signature",next:"16 Jul 2025",used:0,total:1};
+  const [mem,setMem]=React.useState({name:"Loading...",pkg:"signature",next:"",used:0,total:1});
+
+  React.useEffect(()=>{
+    async function loadMember(){
+      try{
+        const {data:{user}}=await supabase.auth.getUser();
+        if(!user)return;
+        const {data:client}=await supabase.from('clients').select('*').eq('email',user.email).single();
+        const {data:membership}=await supabase.from('memberships').select('*').eq('client_id',client?.id).single();
+        if(client&&membership){
+          setMem({
+            name:client.full_name||user.email,
+            pkg:membership.package||'essential',
+            next:'Contact salon to book',
+            used:membership.sessions_used||0,
+            total:membership.sessions_total||0,
+          });
+        }
+      }catch(e){console.log('Error loading member:',e);}
+    }
+    loadMember();
+  },[]);
   const pkg=PKGS.find(p=>p.id===mem.pkg);
   const myBkgs=BKGS.filter(b=>b.client===mem.name);
   const [chat,setChat]=useState(false);
