@@ -903,7 +903,7 @@ function ClientBooking({onBack}) {
               <span style={{color:G.gold,fontSize:28}}>✦</span>
             </div>
             <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:"uppercase",marginBottom:12}}>Booking Requested</div>
-            <h3 style={{fontFamily:SR,color:"#1A1A1A",fontSize:26,fontWeight:400,fontStyle:"italic",margin:"0 0 12px"}}>You are all set, Aisha</h3>
+            <h3 style={{fontFamily:SR,color:"#1A1A1A",fontSize:26,fontWeight:400,fontStyle:"italic",margin:"0 0 12px"}}>You are all set!</h3>
             <p style={{color:"#666",fontSize:14,lineHeight:1.8,maxWidth:360,margin:"0 auto 32px"}}>Christine will confirm your appointment shortly.</p>
             <Btn onClick={onBack}>Back to Dashboard</Btn>
           </div>
