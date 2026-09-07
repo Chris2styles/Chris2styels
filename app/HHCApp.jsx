@@ -168,14 +168,14 @@ const BKGS=[
 ];
 
 const SLOTS=[
-  {id:1,date:"Mon 16 Jun",time:"10:00am",avail:true},
-  {id:2,date:"Mon 16 Jun",time:"2:00pm",avail:true},
-  {id:3,date:"Tue 17 Jun",time:"11:00am",avail:true},
-  {id:4,date:"Tue 17 Jun",time:"3:30pm",avail:false},
-  {id:5,date:"Wed 18 Jun",time:"9:30am",avail:true},
-  {id:6,date:"Thu 19 Jun",time:"1:00pm",avail:true},
-  {id:7,date:"Fri 20 Jun",time:"10:30am",avail:true},
-  {id:8,date:"Fri 20 Jun",time:"4:00pm",avail:false},
+  {id:1,date:"Tue 08 Sep",time:"10:00am",avail:true},
+  {id:2,date:"Tue 08 Sep",time:"2:00pm",avail:true},
+  {id:3,date:"Wed 09 Sep",time:"11:00am",avail:true},
+  {id:4,date:"Wed 09 Sep",time:"3:30pm",avail:false},
+  {id:5,date:"Thu 10 Sep",time:"9:30am",avail:true},
+  {id:6,date:"Fri 11 Sep",time:"1:00pm",avail:true},
+  {id:7,date:"Sat 12 Sep",time:"10:30am",avail:true},
+  {id:8,date:"Sat 12 Sep",time:"4:00pm",avail:false},
 ];
 
 const TCSUMMARY=[
