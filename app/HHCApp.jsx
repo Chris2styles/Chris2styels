@@ -538,7 +538,7 @@ function ClientDashboard({onBook,onLogout}) {
     loadMember();
   },[]);
   const pkg=PKGS.find(p=>p.id===mem.pkg);
-  const myBkgs=BKGS.filter(b=>b.client===mem.name);
+  const myBkgs=[];
   const [chat,setChat]=useState(false);
   const [showT,setShowT]=useState(false);
   const [mOpen,setMOpen]=useState(false);
