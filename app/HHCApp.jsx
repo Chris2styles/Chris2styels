@@ -1208,11 +1208,7 @@ function AdminDashboard({onLogout}) {
   },[]);
 
   const displayMembers = realMembers.length > 0 ? realMembers : MEMBERS;
-  const [inbox,setInbox]=useState([
-    {id:1,client:"Monique James",type:"message",msg:"Hi Christine, I had a payment issue — is my membership still active?",time:"Today 9:42am",read:false},
-    {id:2,client:"Priya Patel",type:"callback",msg:"Requested a callback about pausing her membership.",time:"Today 8:15am",read:false},
-    {id:3,client:"Zoe Williams",type:"stylist question",msg:"Is a deep conditioning treatment suitable for fine hair?",time:"Yesterday 6:30pm",read:true},
-  ]);
+  const [inbox,setInbox]=useState([];
   const [replyT,setReplyT]=useState({});
   const [slots,setSlots]=useState([
     {id:1,sId:"s1",date:"2025-06-16",time:"09:00",dur:60,vip:true,booked:false},
