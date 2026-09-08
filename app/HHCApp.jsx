@@ -1165,6 +1165,7 @@ function AdminDashboard({onLogout}) {
   const [newA,setNewA]=useState({name:"",price:"",cat:ACATS[0]});
   const [aCat,setACat]=useState(ACATS[0]);
   const [realMembers,setRealMembers]=useState([]);
+  const [realBookings,setRealBookings]=useState([]);
   const [loading,setLoading]=useState(true);
 
   React.useEffect(()=>{
@@ -1172,6 +1173,14 @@ function AdminDashboard({onLogout}) {
       try {
         const {data:clients}=await supabase.from('clients').select('*');
         const {data:memberships}=await supabase.from('memberships').select('*');
+        const {data:bookingsData}=await supabase.from('bookings').select('*');
+        if(bookingsData){
+          const bkgs=bookingsData.map((b,i)=>{
+            const cl=clients&&clients.find(c=>c.id===b.client_id);
+            return {id:b.id,client:cl?.full_name||'Unknown',service:b.service||'Appointment',addons:[],date:b.notes||'',time:'',status:b.status||'pending',pkg:'signature'};
+          });
+          setRealBookings(bkgs);
+        }
         if(clients&&memberships){
           const merged=clients.map(cl=>{
             const mem=memberships.find(m=>m.client_id===cl.id)||{};
@@ -1364,7 +1373,7 @@ function AdminDashboard({onLogout}) {
             <div style={{color:G.goldDk,fontSize:10,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Appointments</div>
             <h2 style={{fontFamily:SR,fontSize:22,color:"#1A1A1A",margin:"0 0 20px",fontStyle:"italic",fontWeight:400}}>All Bookings</h2>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {BKGS.map(b=>(
+              {(realBookings.length>0?realBookings:BKGS).map(b=>(
                 <div key={b.id} style={{background:"#fff",borderRadius:12,padding:"16px 18px",border:"1px solid "+G.creamDk}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                     <div style={{display:"flex",gap:12,alignItems:"center"}}>
