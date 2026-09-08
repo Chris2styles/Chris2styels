@@ -1373,7 +1373,7 @@ function AdminDashboard({onLogout}) {
             <div style={{color:G.goldDk,fontSize:10,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Appointments</div>
             <h2 style={{fontFamily:SR,fontSize:22,color:"#1A1A1A",margin:"0 0 20px",fontStyle:"italic",fontWeight:400}}>All Bookings</h2>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {(realBookings.length>0?realBookings:BKGS).map(b=>(
+              {(realBookings.length>0?realBookings:[]).map(b=>(
                 <div key={b.id} style={{background:"#fff",borderRadius:12,padding:"16px 18px",border:"1px solid "+G.creamDk}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                     <div style={{display:"flex",gap:12,alignItems:"center"}}>
