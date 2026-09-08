@@ -1319,7 +1319,7 @@ function AdminDashboard({onLogout}) {
             )}
             <Card id="upcoming" icon="📅" title="Upcoming Bookings" sub={BKGS.length+" this week"}>
               <div style={{padding:"4px 0 8px"}}>
-                {BKGS.map((b,i)=>(
+                {(realBookings.length>0?realBookings:BKGS).map((b,i)=>(
                   <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 20px",borderBottom:i<BKGS.length-1?"1px solid #F5F3EE":"none"}}>
                     <div style={{display:"flex",gap:12,alignItems:"center"}}>
                       <div style={{width:38,height:38,borderRadius:"50%",background:G.goldPale,border:"1px solid "+G.gold+"44",display:"flex",alignItems:"center",justifyContent:"center",color:G.goldDk,fontWeight:700,fontSize:16,flexShrink:0}}>{b.client[0]}</div>
