@@ -892,7 +892,15 @@ function ClientBooking({onBack}) {
             </div>
             <div style={{display:"flex",gap:10}}>
               <Btn ghost onClick={()=>setStep(3)}>Back</Btn>
-              <div style={{flex:1}}><Btn full onClick={()=>setStep(5)}>Confirm Booking</Btn></div>
+              <div style={{flex:1}}><Btn full onClick={async()=>{
+            try{
+              const {data:{user}}=await supabase.auth.getUser();
+              const slot=SLOTS.find(s=>s.id===slot);
+              await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({clientEmail:user?.email,service:svc,slotDate:slot?.date,slotTime:slot?.time,addons:adds.map(id=>ADDONS.find(a=>a.id===id)?.name||id)})});
+            }catch(e){console.log('Booking error:',e);}
+            setStep(5);
+          }}>Confirm Booking</Btn></div>
             </div>
           </div>
         )}
