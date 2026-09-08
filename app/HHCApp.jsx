@@ -1333,8 +1333,8 @@ function AdminDashboard({onLogout}) {
                       <PkgTag p={b.pkg}/><Pill s={b.status}/>
                       {b.status==="pending"&&(
                         <div style={{display:"flex",gap:6}}>
-                          <button style={{background:G.okBg,color:G.ok,border:"none",borderRadius:6,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:700}}>Approve</button>
-                          <button style={{background:G.errBg,color:G.err,border:"none",borderRadius:6,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:700}}>Decline</button>
+                          <button onClick={async()=>{await supabase.from('bookings').update({status:'confirmed'}).eq('id',b.id);setRealBookings(p=>p.map(x=>x.id===b.id?{...x,status:'confirmed'}:x));}} style={{background:G.okBg,color:G.ok,border:"none",borderRadius:6,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:700}}>Approve</button>
+                          <button onClick={async()=>{await supabase.from('bookings').update({status:'cancelled'}).eq('id',b.id);setRealBookings(p=>p.map(x=>x.id===b.id?{...x,status:'cancelled'}:x));}} style={{background:G.errBg,color:G.err,border:"none",borderRadius:6,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:700}}>Decline</button>
                         </div>
                       )}
                     </div>
@@ -1399,8 +1399,8 @@ function AdminDashboard({onLogout}) {
                       <div style={{display:"flex",gap:8}}><PkgTag p={b.pkg}/><Pill s={b.status}/></div>
                       {b.status==="pending"&&(
                         <div style={{display:"flex",gap:8}}>
-                          <button style={{background:G.okBg,color:G.ok,border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontSize:12,fontWeight:700}}>Approve</button>
-                          <button style={{background:G.errBg,color:G.err,border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontSize:12,fontWeight:700}}>Decline</button>
+                          <button onClick={async()=>{await supabase.from('bookings').update({status:'confirmed'}).eq('id',b.id);setRealBookings(p=>p.map(x=>x.id===b.id?{...x,status:'confirmed'}:x));}} style={{background:G.okBg,color:G.ok,border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontSize:12,fontWeight:700}}>Approve</button>
+                          <button onClick={async()=>{await supabase.from('bookings').update({status:'cancelled'}).eq('id',b.id);setRealBookings(p=>p.map(x=>x.id===b.id?{...x,status:'cancelled'}:x));}} style={{background:G.errBg,color:G.err,border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontSize:12,fontWeight:700}}>Decline</button>
                         </div>
                       )}
                     </div>
