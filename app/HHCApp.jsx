@@ -538,7 +538,33 @@ function ClientDashboard({onBook,onLogout}) {
     loadMember();
   },[]);
   const pkg=PKGS.find(p=>p.id===mem.pkg);
-  const myBkgs=[];
+  const [myBkgs,setMyBkgs]=React.useState([]);
+
+  React.useEffect(()=>{
+    async function loadBookings(){
+      try{
+        const {data:{user}}=await supabase.auth.getUser();
+        if(!user)return;
+        const {data:clients}=await supabase.from('clients').select('*');
+        const client=clients&&clients.find(c=>c.email===user.email);
+        if(!client)return;
+        const {data:bookings}=await supabase.from('bookings').select('*').eq('client_id',client.id);
+        if(bookings){
+          setMyBkgs(bookings.map(b=>({
+            id:b.id,
+            client:client.full_name,
+            service:b.service,
+            addons:[],
+            date:b.notes||'Contact salon for details',
+            time:'',
+            status:b.status||'pending',
+            pkg:'signature'
+          })));
+        }
+      }catch(e){console.log('Error loading bookings:',e);}
+    }
+    loadBookings();
+  },[]);
   const [chat,setChat]=useState(false);
   const [showT,setShowT]=useState(false);
   const [mOpen,setMOpen]=useState(false);
