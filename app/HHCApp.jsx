@@ -1208,7 +1208,7 @@ function AdminDashboard({onLogout}) {
   },[]);
 
   const displayMembers = realMembers.length > 0 ? realMembers : MEMBERS;
-  const [inbox,setInbox]=useState([];
+  const [inbox,setInbox]=useState([]);
   const [replyT,setReplyT]=useState({});
   const [slots,setSlots]=useState([
     {id:1,sId:"s1",date:"2025-06-16",time:"09:00",dur:60,vip:true,booked:false},
