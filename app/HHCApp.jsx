@@ -728,6 +728,20 @@ function ClientBooking({onBack}) {
   const [step,setStep]=useState(1);
   const [svc,setSvc]=useState(null);
   const [slot,setSlot]=useState(null);
+  const [realSlots,setRealSlots]=React.useState([]);
+  React.useEffect(()=>{
+    fetch('/api/slots').then(r=>r.json()).then(d=>{
+      if(d.slots&&d.slots.length>0){
+        setRealSlots(d.slots.map((s,i)=>({
+          id:s.id,
+          date:new Date(s.slot_date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}),
+          time:s.slot_time.slice(0,5),
+          avail:!s.booked
+        })));
+      }
+    }).catch(e=>console.log('Slots error:',e));
+  },[]);
+  const displaySlots = realSlots.length>0 ? realSlots : SLOTS;
   const [adds,setAdds]=useState([]);
   const [cat,setCat]=useState(ACATS[0]);
   const [chat,setChat]=useState(false);
@@ -838,7 +852,7 @@ function ClientBooking({onBack}) {
             <h3 style={{fontFamily:SR,color:"#1A1A1A",fontSize:22,fontStyle:"italic",margin:"0 0 6px"}}>Select your time</h3>
             <p style={{color:"#666",fontSize:13,margin:"0 0 24px"}}>Members-only slots reserved exclusively for Healthy Hair Club members.</p>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:24}}>
-              {SLOTS.map(s=>(
+              {displaySlots.map(s=>(
                 <div key={s.id} onClick={()=>s.avail&&setSlot(s.id)} style={{background:!s.avail?"#F5F5F5":slot===s.id?G.goldPale:"#fff",border:"1px solid "+(!s.avail?"#E0E0E0":slot===s.id?G.gold:G.creamDk),borderRadius:3,padding:16,cursor:s.avail?"pointer":"not-allowed",opacity:s.avail?1:0.4,textAlign:"center"}}>
                   <div style={{fontSize:12,color:slot===s.id?G.goldDk:"#888",marginBottom:4}}>{s.date}</div>
                   <div style={{fontSize:16,fontWeight:700,fontFamily:DP,color:slot===s.id?G.goldDk:"#1A1A1A"}}>{s.time}</div>
@@ -1472,7 +1486,17 @@ function AdminDashboard({onLogout}) {
                     {stylists.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
-                <Btn sm onClick={()=>{if(nSlot.date&&nSlot.time){setSlots(p=>[...p,{id:Date.now(),sId:nSlot.sId,date:nSlot.date,time:nSlot.time,dur:nSlot.dur,vip:nSlot.vip,booked:false}]);setNSlot(p=>({...p,date:"",time:""}));}}}>Add</Btn>
+                <Btn sm onClick={async()=>{if(nSlot.date&&nSlot.time){
+                  try{
+                    const res=await fetch('/api/slots',{method:'POST',headers:{'Content-Type':'application/json'},
+                      body:JSON.stringify({date:nSlot.date,time:nSlot.time,duration:nSlot.dur,stylistId:nSlot.sId})});
+                    const data=await res.json();
+                    if(data.slot){
+                      setSlots(p=>[...p,{id:data.slot.id,sId:nSlot.sId,date:nSlot.date,time:nSlot.time,dur:nSlot.dur,vip:true,booked:false}]);
+                      setNSlot(p=>({...p,date:"",time:""}));
+                    }
+                  }catch(e){console.log('Error:',e);}
+                }}}>Add</Btn>
               </div>
             </div>
             <div style={{display:"flex",gap:8,marginBottom:12}}>
