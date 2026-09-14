@@ -1092,6 +1092,11 @@ function MemberDetail({member,onBack,onLogout}) {
                   })}
                 </div>
               </div>
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11,color:"#888",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Amount Paid for Add-ons Today (£)</div>
+                <input type="number" value={nv.paid||""} onChange={e=>setNv(p=>({...p,paid:e.target.value}))} placeholder="e.g. 45.00"
+                  style={{width:"100%",padding:"11px 12px",background:"#fff",border:"1px solid #DDD8CE",borderRadius:8,fontSize:13,fontFamily:BD,boxSizing:"border-box"}}/>
+              </div>
               <div style={{marginBottom:16}}>
                 <div style={{fontSize:11,color:"#888",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Notes</div>
                 <textarea value={nv.note} onChange={e=>setNv(p=>({...p,note:e.target.value}))} placeholder="e.g. Applied Olaplex. Hair responded well. Recommend K18 next visit." style={{width:"100%",padding:"12px 14px",background:"#fff",border:"1px solid #DDD8CE",borderRadius:8,fontSize:13,fontFamily:BD,resize:"none",minHeight:80,boxSizing:"border-box",color:"#1A1A1A",lineHeight:1.7}}/>
@@ -1130,6 +1135,12 @@ function MemberDetail({member,onBack,onLogout}) {
                           return <span key={ti} style={{background:"#fff",border:"1px solid "+G.creamDk,borderRadius:20,padding:"5px 13px",fontSize:12,fontWeight:600,color:"#333",display:"flex",alignItems:"center",gap:6}}><span>{td?td.icon:""}</span> {t}</span>;
                         })}
                       </div>
+                    </div>
+                  )}
+                  {v.paid&&(
+                    <div style={{marginBottom:12}}>
+                      <div style={{fontSize:11,color:"#AAA",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Amount Paid</div>
+                      <div style={{background:G.goldPale,borderRadius:10,padding:"13px 16px",border:"1px solid "+G.gold+"44",color:G.goldDk,fontSize:20,fontWeight:700}}>£{v.paid}</div>
                     </div>
                   )}
                   {v.note&&(
