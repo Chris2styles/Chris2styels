@@ -937,7 +937,7 @@ function ClientBooking({onBack}) {
               const {data:{user}}=await supabase.auth.getUser();
               const selectedSlot=SLOTS.find(s=>s.id===slot);
               await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({clientEmail:user?.email,service:svc,slotDate:selectedSlot?.date,slotTime:selectedSlot?.time,addons:adds.map(id=>ADDONS.find(a=>a.id===id)?.name||id)})});
+                body:JSON.stringify({clientEmail:user?.email,service:svc,slotDate:selectedSlot?.date||'TBC',slotTime:selectedSlot?.time||'TBC',addons:adds.map(id=>ADDONS.find(a=>a.id===id)?.name||id)})});
             }catch(e){console.log('Booking error:',e);}
             setStep(5);
           }}>Confirm Booking</Btn></div>
@@ -1217,7 +1217,10 @@ function AdminDashboard({onLogout}) {
         if(bookingsData){
           const bkgs=bookingsData.map((b,i)=>{
             const cl=clients&&clients.find(c=>c.id===b.client_id);
-            return {id:b.id,client:cl?.full_name||'Unknown',service:b.service||'Appointment',addons:[],date:b.notes||'',time:'',status:b.status||'pending',pkg:'signature'};
+            const notes=b.notes||'';
+                    const datePart=notes.includes(' at ')?notes.split(' at ')[0]:'Contact salon';
+                    const timePart=notes.includes(' at ')?notes.split(' at ')[1]:'';
+                    return {id:b.id,client:cl?.full_name||'Unknown',service:b.service||'Appointment',addons:[],date:datePart,time:timePart,status:b.status||'pending',pkg:'signature'};
           });
           setRealBookings(bkgs);
         }
