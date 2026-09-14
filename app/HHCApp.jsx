@@ -935,7 +935,7 @@ function ClientBooking({onBack}) {
               <div style={{flex:1}}><Btn full onClick={async()=>{
             try{
               const {data:{user}}=await supabase.auth.getUser();
-              const selectedSlot=SLOTS.find(s=>s.id===slot);
+              const selectedSlot=displaySlots.find(s=>s.id===slot)||SLOTS.find(s=>s.id===slot);
               await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},
                 body:JSON.stringify({clientEmail:user?.email,service:svc,slotDate:selectedSlot?.date||'TBC',slotTime:selectedSlot?.time||'TBC',addons:adds.map(id=>ADDONS.find(a=>a.id===id)?.name||id)})});
             }catch(e){console.log('Booking error:',e);}
