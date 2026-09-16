@@ -19,18 +19,29 @@ export async function POST(req) {
     return NextResponse.json({ error: err.message }, { status: 400 })
   }
 
+  // DUPLICATE PROTECTION - check if event already processed
+  const { data: existing } = await supabase
+    .from('processed_events')
+    .select('id')
+    .eq('stripe_event_id', event.id)
+    .single()
+
+  if (existing) {
+    return NextResponse.json({ received: true, duplicate: true })
+  }
+
+  // Mark event as processed
+  await supabase.from('processed_events').insert({ stripe_event_id: event.id })
+
+  // CHECKOUT COMPLETED - create member
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object
     const { name, package: pkg } = session.metadata || {}
     const email = session.customer_email
 
-    let { data: existing } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('email', email)
-      .single()
-
-    let clientId = existing?.id
+    let { data: clients } = await supabase.from('clients').select('*')
+    let client = clients && clients.find(c => c.email === email)
+    let clientId = client?.id
 
     if (!clientId) {
       const { data: newClient } = await supabase
@@ -42,6 +53,11 @@ export async function POST(req) {
     }
 
     if (clientId) {
+      const sessions = pkg === 'essential' ? 0 : 1
+      const credit = pkg === 'elite' ? 30 : 0
+      const creditExpiry = new Date()
+      creditExpiry.setMonth(creditExpiry.getMonth() + 1)
+
       await supabase.from('memberships').insert({
         client_id: clientId,
         package: pkg || 'essential',
@@ -49,11 +65,13 @@ export async function POST(req) {
         stripe_customer_id: session.customer,
         stripe_sub_id: session.subscription,
         sessions_used: 0,
-        sessions_total: pkg === 'essential' ? 0 : 1,
+        sessions_total: sessions,
+        style_credit: credit,
       })
     }
   }
 
+  // PAYMENT FAILED
   if (event.type === 'invoice.payment_failed') {
     const invoice = event.data.object
     await supabase
@@ -62,6 +80,7 @@ export async function POST(req) {
       .eq('stripe_customer_id', invoice.customer)
   }
 
+  // PAYMENT SUCCEEDED - renewal
   if (event.type === 'invoice.paid') {
     const invoice = event.data.object
     const { data: m } = await supabase
@@ -69,12 +88,29 @@ export async function POST(req) {
       .select('package')
       .eq('stripe_customer_id', invoice.customer)
       .single()
+
     if (m) {
+      const sessions = m.package === 'essential' ? 0 : 1
+      const credit = m.package === 'elite' ? 30 : 0
       await supabase
         .from('memberships')
-        .update({ status: 'active', sessions_used: 0, sessions_total: m.package === 'essential' ? 0 : 1 })
+        .update({ 
+          status: 'active', 
+          sessions_used: 0, 
+          sessions_total: sessions,
+          style_credit: credit,
+        })
         .eq('stripe_customer_id', invoice.customer)
     }
+  }
+
+  // SUBSCRIPTION CANCELLED
+  if (event.type === 'customer.subscription.deleted') {
+    const sub = event.data.object
+    await supabase
+      .from('memberships')
+      .update({ status: 'cancelled' })
+      .eq('stripe_sub_id', sub.id)
   }
 
   return NextResponse.json({ received: true })
