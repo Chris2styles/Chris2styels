@@ -1,0 +1,72 @@
+import { NextResponse } from 'next/server'
+import { Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+const ADMIN = 'christine.walker@hairdresser.net'
+const FROM = 'noreply@chris2styles.co.uk'
+const URL = 'https://chris2styles.co.uk'
+
+function emailWrap(body) {
+  return `<div style='font-family:Helvetica Neue,sans-serif;max-width:600px;margin:0 auto'><div style='background:#1A1A1A;padding:24px;text-align:center'><h1 style='color:#C9A84C;font-family:Georgia,serif;font-style:italic;margin:0'>Chris 2 Styles</h1><p style='color:#999;margin:4px 0 0;font-size:12px;letter-spacing:2px;text-transform:uppercase'>Healthy Hair Club</p></div><div style='padding:32px;background:#F5F3EE'>${body}</div><div style='padding:20px;text-align:center;background:#1A1A1A'><p style='color:#666;font-size:12px;margin:0'>Chris 2 Styles Salon · Mitcham Lane · London SW16</p></div></div>`
+}
+
+function btn(text, url) {
+  return `<a href='${url}' style='display:inline-block;margin-top:20px;padding:14px 28px;background:#C9A84C;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:700;font-family:Trebuchet MS,sans-serif;letter-spacing:1px;text-transform:uppercase'>${text}</a>`
+}
+
+export async function POST(req) {
+  try {
+    const { type, data } = await req.json()
+    const send = (to, subject, html) => resend.emails.send({ from: FROM, to, subject, html })
+
+    if (type === 'booking_submitted') {
+      await send(ADMIN, 'New Booking Request — Healthy Hair Club',
+        emailWrap(`<h2>New Booking Request</h2><p><strong>Client:</strong> ${data.clientName}</p><p><strong>Service:</strong> ${data.service}</p><p><strong>Date:</strong> ${data.date} at ${data.time}</p><p><strong>Add-ons:</strong> ${data.addons||'None'}</p>${btn('View in Admin', URL+'/admin')}`)
+      )
+    }
+
+    if (type === 'booking_confirmed') {
+      await send(data.clientEmail, 'Your Appointment is Confirmed — Healthy Hair Club',
+        emailWrap(`<h2 style='color:#2E7D32'>Your appointment is confirmed</h2><p>Hi ${data.clientName}, we look forward to seeing you.</p><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p><strong>Service:</strong> ${data.service}</p><p><strong>Date:</strong> ${data.date}</p><p><strong>Time:</strong> ${data.time}</p></div><p style='color:#888;font-size:13px'>Please provide at least 24 hours notice if you need to reschedule.</p>${btn('View My Dashboard', URL)}`)
+      )
+    }
+
+    if (type === 'booking_declined') {
+      await send(data.clientEmail, 'Appointment Update — Healthy Hair Club',
+        emailWrap(`<h2>Appointment Update</h2><p>Hi ${data.clientName}, unfortunately we were unable to confirm your requested appointment at this time.</p><p>Please log in to choose another available appointment.</p>${btn('Choose Another Appointment', URL)}`)
+      )
+    }
+
+    if (type === 'message_received') {
+      await send(ADMIN, 'New Message — Healthy Hair Club',
+        emailWrap(`<h2>New Message from ${data.clientName}</h2><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p>${data.message}</p></div>${btn('Reply in Admin', URL+'/admin')}`)
+      )
+    }
+
+    if (type === 'message_replied') {
+      await send(data.clientEmail, 'New Message from Chris 2 Styles Salon',
+        emailWrap(`<h2>You have a new message from Chris 2 Styles Salon</h2><p>Hi ${data.clientName},</p><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p>${data.preview}</p></div>${btn('View Message', URL)}`)
+      )
+    }
+
+    if (type === 'payment_failed') {
+      await send(data.clientEmail, 'Action Required — Healthy Hair Club Membership',
+        emailWrap(`<h2 style='color:#B71C1C'>Action Required — Payment Issue</h2><p>Hi ${data.clientName}, there is an issue with your Healthy Hair Club membership payment.</p><p>Your booking access has been temporarily paused. Please update your payment details to restore your membership.</p>${btn('Update Payment Details', 'https://billing.stripe.com')}`)
+      )
+      await send(ADMIN, 'Payment Failed — '+data.clientName,
+        emailWrap(`<p>Payment failed for <strong>${data.clientName}</strong> (${data.clientEmail}). Their membership has been paused automatically.</p>`)
+      )
+    }
+
+    if (type === 'payment_restored') {
+      await send(data.clientEmail, 'Your Membership is Active Again — Healthy Hair Club',
+        emailWrap(`<h2 style='color:#2E7D32'>Your membership is active again</h2><p>Hi ${data.clientName}, your payment has been successfully processed and your booking access has been fully restored.</p>${btn('View My Dashboard', URL)}`)
+      )
+    }
+
+    return NextResponse.json({ sent: true })
+  } catch (err) {
+    console.error('Notification error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}

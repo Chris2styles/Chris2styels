@@ -71,13 +71,25 @@ export async function POST(req) {
     }
   }
 
-  // PAYMENT FAILED
+     // PAYMENT FAILED
   if (event.type === 'invoice.payment_failed') {
     const invoice = event.data.object
     await supabase
       .from('memberships')
       .update({ status: 'payment_failed' })
       .eq('stripe_customer_id', invoice.customer)
+    // Notify client and admin
+    const { data: clients } = await supabase.from('clients').select('*')
+    const client = clients && clients.find(c => {
+      return supabase.from('memberships').select('client_id').eq('stripe_customer_id', invoice.customer)
+    })
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://chris2styles.co.uk'}/api/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'payment_failed', data: { clientEmail: invoice.customer_email || '', clientName: 'Member' } })
+      })
+    } catch(e) { console.log('Notify error:', e) }
   }
 
   // PAYMENT SUCCEEDED - renewal
