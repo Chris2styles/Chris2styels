@@ -1378,6 +1378,8 @@ function AdminDashboard({onLogout}) {
       setLoading(false);
     }
     loadMembers();
+    const interval=setInterval(loadMembers,30000);
+    return ()=>clearInterval(interval);
   },[]);
 
   const displayMembers = realMembers.length > 0 ? realMembers : MEMBERS;
