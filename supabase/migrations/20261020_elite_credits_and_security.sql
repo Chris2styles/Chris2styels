@@ -127,7 +127,7 @@ begin
   return bid;
 end; $$;
 revoke execute on function public.create_booking(uuid,uuid,text,text[],text) from public, anon, authenticated;
-revoke execute on function public.credit_balance(uuid) from anon;
+revoke execute on function public.credit_balance(uuid) from public, anon, authenticated;
 
 -- 5. Carry over any Elite credit given by the old code (Elite is on sale while this is prepared).
 insert into public.credit_ledger(membership_id, client_id, kind, amount, note, created_by)
