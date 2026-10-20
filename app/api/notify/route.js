@@ -14,9 +14,27 @@ function btn(text, url) {
   return `<a href='${url}' style='display:inline-block;margin-top:20px;padding:14px 28px;background:#C9A84C;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:700;font-family:Trebuchet MS,sans-serif;letter-spacing:1px;text-transform:uppercase'>${text}</a>`
 }
 
+import { getUserFromReq, isAdmin } from '../../lib/server'
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+
+// Emails anyone signed in may trigger (they only ever go to the salon).
+const MEMBER_TYPES = ['message_received']
+// Emails that go to clients: only the server itself or a signed-in admin may trigger them.
+const PROTECTED_TYPES = ['booking_submitted', 'booking_confirmed', 'booking_declined', 'message_replied', 'payment_failed', 'payment_restored']
+
 export async function POST(req) {
   try {
-    const { type, data } = await req.json()
+    const { type, data: raw } = await req.json()
+    const internal = process.env.SUPABASE_SECRET_KEY && req.headers.get('x-internal-key') === process.env.SUPABASE_SECRET_KEY
+    if (!internal) {
+      const user = await getUserFromReq(req)
+      const allowed = MEMBER_TYPES.includes(type) ? !!user : (PROTECTED_TYPES.includes(type) && user && await isAdmin(user.email))
+      if (!allowed) return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
+    }
+    const data = Object.fromEntries(Object.entries(raw || {}).map(([k, v]) => [k, k === 'clientEmail' ? String(v ?? '') : esc(v)]))
     const send = (to, subject, html) => resend.emails.send({ from: FROM, to, subject, html })
 
     if (type === 'booking_submitted') {
@@ -27,7 +45,7 @@ export async function POST(req) {
 
     if (type === 'booking_confirmed') {
       await send(data.clientEmail, 'Your Appointment is Confirmed — Healthy Hair Club',
-        emailWrap(`<h2 style='color:#2E7D32'>Your appointment is confirmed</h2><p>Hi ${data.clientName}, we look forward to seeing you.</p><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p><strong>Service:</strong> ${data.service}</p><p><strong>Date:</strong> ${data.date}</p><p><strong>Time:</strong> ${data.time}</p></div><p style='color:#888;font-size:13px'>Please provide at least 24 hours notice if you need to reschedule.</p>${btn('View My Dashboard', URL)}`)
+        emailWrap(`<h2 style='color:#2E7D32'>Your appointment is confirmed</h2><p>Hi ${data.clientName}, we look forward to seeing you.</p><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p><strong>Service:</strong> ${data.service}</p><p><strong>Date:</strong> ${data.date}</p><p><strong>Time:</strong> ${data.time}</p>${data.creditApplied && data.creditApplied !== '0' ? `<p><strong>Styling credit used:</strong> £${data.creditApplied} (remaining £${data.creditBalance})</p>` : ''}</div><p style='color:#888;font-size:13px'>Please provide at least 24 hours notice if you need to reschedule.</p>${btn('View My Dashboard', URL)}`)
       )
     }
 

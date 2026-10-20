@@ -10,6 +10,10 @@ export async function POST(req) {
       elite: process.env.NEXT_PUBLIC_STRIPE_PRICE_ELITE,
     }
     const { package: pkg, email, name } = await req.json()
+    // Emergency off-switch: set ELITE_SALES_ENABLED=false in Netlify to pause Elite sales.
+    if (pkg === 'elite' && process.env.ELITE_SALES_ENABLED === 'false') {
+      return NextResponse.json({ error: 'Elite membership is coming soon. Please contact the salon to register your interest.' }, { status: 403 })
+    }
     const priceId = PRICE_IDS[pkg]
     if (!priceId) {
       return NextResponse.json({ error: 'Invalid package' }, { status: 400 })

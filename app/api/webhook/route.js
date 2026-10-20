@@ -1,10 +1,120 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import Stripe from 'stripe'
+import { supabaseAdmin as supabase, ELITE_MONTHLY_CREDIT, notify } from '../../lib/server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SECRET_KEY
-)
+const SESSIONS = { essential: 0, signature: 1, elite: 1 }
+
+function subIdOf(invoice) {
+  return invoice.subscription
+    || invoice.parent?.subscription_details?.subscription
+    || invoice.lines?.data?.[0]?.parent?.subscription_item_details?.subscription
+    || invoice.lines?.data?.[0]?.subscription
+    || null
+}
+
+function periodOf(invoice) {
+  const p = invoice.lines?.data?.[0]?.period
+  if (!p) return {}
+  return {
+    current_period_start: new Date(p.start * 1000).toISOString(),
+    current_period_end: new Date(p.end * 1000).toISOString(),
+  }
+}
+
+async function membershipForSub(subId) {
+  if (!subId) return null
+  const { data } = await supabase.from('memberships').select('*, clients(full_name,email)').eq('stripe_sub_id', subId).maybeSingle()
+  return data
+}
+
+class RetryLater extends Error {}
+
+async function handleCheckoutCompleted(session) {
+  if (session.mode !== 'subscription' || !session.subscription) return
+  const existing = await membershipForSub(session.subscription)
+  if (existing) return
+
+  const { name, package: pkgRaw } = session.metadata || {}
+  const pkg = ['essential', 'signature', 'elite'].includes(pkgRaw) ? pkgRaw : 'essential'
+  const email = (session.customer_email || session.customer_details?.email || '').toLowerCase()
+  if (!email) throw new Error('checkout session has no email')
+
+  let { data: client } = await supabase.from('clients').select('id').ilike('email', email).maybeSingle()
+  if (!client) {
+    const { data, error } = await supabase.from('clients').insert({ full_name: name || email, email }).select('id').single()
+    if (error) throw error
+    client = data
+  }
+
+  const { error } = await supabase.from('memberships').insert({
+    client_id: client.id,
+    package: pkg,
+    status: 'active',
+    stripe_customer_id: session.customer,
+    stripe_sub_id: session.subscription,
+    sessions_used: 0,
+    sessions_total: SESSIONS[pkg],
+    style_credit: 0, // credit is only ever added from a paid invoice (see invoice.paid)
+  })
+  if (error) throw error
+}
+
+async function handleInvoicePaid(req, invoice) {
+  const subId = subIdOf(invoice)
+  if (!subId) return // not a membership invoice
+  const m = await membershipForSub(subId)
+  // invoice.paid can arrive before checkout.session.completed; ask Stripe to retry shortly.
+  if (!m) throw new RetryLater('membership not created yet for ' + subId)
+
+  await supabase.from('payments').upsert({
+    client_id: m.client_id,
+    membership_id: m.id,
+    stripe_payment_id: invoice.id,
+    amount: (invoice.amount_paid || 0) / 100,
+    currency: invoice.currency || 'gbp',
+    status: 'paid',
+  }, { onConflict: 'stripe_payment_id' })
+
+  const qualifying = (invoice.amount_paid || 0) > 0 && ['subscription_create', 'subscription_cycle'].includes(invoice.billing_reason)
+  if (!qualifying) return
+
+  const wasFailed = m.status === 'payment_failed'
+  const { error } = await supabase.from('memberships').update({
+    status: 'active',
+    sessions_used: 0,
+    sessions_total: SESSIONS[m.package] ?? 0,
+    ...periodOf(invoice),
+  }).eq('id', m.id)
+  if (error) throw error
+
+  if (m.package === 'elite') {
+    // Database guarantees one credit per invoice, even if Stripe sends this event twice.
+    const { error: cErr } = await supabase.rpc('issue_elite_credit', { p_membership: m.id, p_invoice: invoice.id, p_amount: ELITE_MONTHLY_CREDIT })
+    if (cErr) throw cErr
+  }
+
+  if (wasFailed && m.clients?.email) {
+    await notify(req, 'payment_restored', { clientEmail: m.clients.email, clientName: m.clients.full_name })
+  }
+}
+
+async function handlePaymentFailed(req, invoice) {
+  const m = await membershipForSub(subIdOf(invoice))
+  if (!m) return
+  await supabase.from('memberships').update({ status: 'payment_failed' }).eq('id', m.id)
+  await supabase.from('payments').upsert({
+    client_id: m.client_id, membership_id: m.id, stripe_payment_id: invoice.id,
+    amount: (invoice.amount_due || 0) / 100, currency: invoice.currency || 'gbp', status: 'failed',
+  }, { onConflict: 'stripe_payment_id' })
+  await notify(req, 'payment_failed', {
+    clientEmail: m.clients?.email || invoice.customer_email || '',
+    clientName: m.clients?.full_name || 'Member',
+  })
+}
+
+async function handleSubscriptionDeleted(sub) {
+  await supabase.from('memberships').update({ status: 'cancelled' }).eq('stripe_sub_id', sub.id)
+}
 
 export async function POST(req) {
   const body = await req.text()
@@ -12,117 +122,33 @@ export async function POST(req) {
 
   let event
   try {
-    const Stripe = (await import('stripe')).default
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
     event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET)
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  // DUPLICATE PROTECTION - check if event already processed
-  const { data: existing } = await supabase
+  // Duplicate protection: claiming the event id is atomic, so two copies can't both get through.
+  const { data: claimed, error: claimErr } = await supabase
     .from('processed_events')
+    .upsert({ stripe_event_id: event.id }, { onConflict: 'stripe_event_id', ignoreDuplicates: true })
     .select('id')
-    .eq('stripe_event_id', event.id)
-    .single()
+  if (claimErr) return NextResponse.json({ error: 'db unavailable' }, { status: 500 })
+  if (!claimed || claimed.length === 0) return NextResponse.json({ received: true, duplicate: true })
 
-  if (existing) {
-    return NextResponse.json({ received: true, duplicate: true })
-  }
-
-  // Mark event as processed
-  await supabase.from('processed_events').insert({ stripe_event_id: event.id })
-
-  // CHECKOUT COMPLETED - create member
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object
-    const { name, package: pkg } = session.metadata || {}
-    const email = session.customer_email
-
-    let { data: clients } = await supabase.from('clients').select('*')
-    let client = clients && clients.find(c => c.email === email)
-    let clientId = client?.id
-
-    if (!clientId) {
-      const { data: newClient } = await supabase
-        .from('clients')
-        .insert({ full_name: name || email, email })
-        .select('id')
-        .single()
-      clientId = newClient?.id
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': await handleCheckoutCompleted(event.data.object); break
+      case 'invoice.paid': await handleInvoicePaid(req, event.data.object); break
+      case 'invoice.payment_failed': await handlePaymentFailed(req, event.data.object); break
+      case 'customer.subscription.deleted': await handleSubscriptionDeleted(event.data.object); break
+      default: break
     }
-
-    if (clientId) {
-      const sessions = pkg === 'essential' ? 0 : 1
-      const credit = pkg === 'elite' ? 30 : 0
-      const creditExpiry = new Date()
-      creditExpiry.setMonth(creditExpiry.getMonth() + 1)
-
-      await supabase.from('memberships').insert({
-        client_id: clientId,
-        package: pkg || 'essential',
-        status: 'active',
-        stripe_customer_id: session.customer,
-        stripe_sub_id: session.subscription,
-        sessions_used: 0,
-        sessions_total: sessions,
-        style_credit: credit,
-      })
-    }
-  }
-
-     // PAYMENT FAILED
-  if (event.type === 'invoice.payment_failed') {
-    const invoice = event.data.object
-    await supabase
-      .from('memberships')
-      .update({ status: 'payment_failed' })
-      .eq('stripe_customer_id', invoice.customer)
-    // Notify client and admin
-    const { data: clients } = await supabase.from('clients').select('*')
-    const client = clients && clients.find(c => {
-      return supabase.from('memberships').select('client_id').eq('stripe_customer_id', invoice.customer)
-    })
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://chris2styles.co.uk'}/api/notify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'payment_failed', data: { clientEmail: invoice.customer_email || '', clientName: 'Member' } })
-      })
-    } catch(e) { console.log('Notify error:', e) }
-  }
-
-  // PAYMENT SUCCEEDED - renewal
-  if (event.type === 'invoice.paid') {
-    const invoice = event.data.object
-    const { data: m } = await supabase
-      .from('memberships')
-      .select('package')
-      .eq('stripe_customer_id', invoice.customer)
-      .single()
-
-    if (m) {
-      const sessions = m.package === 'essential' ? 0 : 1
-      const credit = m.package === 'elite' ? 30 : 0
-      await supabase
-        .from('memberships')
-        .update({ 
-          status: 'active', 
-          sessions_used: 0, 
-          sessions_total: sessions,
-          style_credit: credit,
-        })
-        .eq('stripe_customer_id', invoice.customer)
-    }
-  }
-
-  // SUBSCRIPTION CANCELLED
-  if (event.type === 'customer.subscription.deleted') {
-    const sub = event.data.object
-    await supabase
-      .from('memberships')
-      .update({ status: 'cancelled' })
-      .eq('stripe_sub_id', sub.id)
+  } catch (err) {
+    // Release the claim so Stripe's automatic retry is processed properly.
+    await supabase.from('processed_events').delete().eq('stripe_event_id', event.id)
+    console.error('webhook error', event.type, event.id, err)
+    return NextResponse.json({ error: 'processing failed, will retry' }, { status: 500 })
   }
 
   return NextResponse.json({ received: true })
