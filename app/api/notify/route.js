@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const ADMIN = 'christine.walker@hairdresser.net'
-const FROM = 'noreply@chris2styles.co.uk'
+const FROM = 'Chris 2 Styles Salon <bookings@chris2styles.co.uk>'
 const URL = 'https://chris2styles.co.uk'
 
 function emailWrap(body) {
@@ -15,6 +15,19 @@ function btn(text, url) {
 }
 
 import { getUserFromReq, isAdmin } from '../../lib/server'
+
+// Plain-text version of an email, so it isn't HTML-only (which spam filters distrust).
+function toText(html) {
+  return html
+    .replace(/<a [^>]*href='([^']*)'[^>]*>([^<]*)<\/a>/g, '$2: $1')
+    .replace(/<\/(h1|h2|p|div)>/g, '\n')
+    .replace(/<br\s*\/?>/g, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n+/g, '\n\n')
+    .trim()
+}
 
 function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
@@ -35,7 +48,12 @@ export async function POST(req) {
       if (!allowed) return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
     }
     const data = Object.fromEntries(Object.entries(raw || {}).map(([k, v]) => [k, k === 'clientEmail' ? String(v ?? '') : esc(v)]))
-    const send = (to, subject, html) => resend.emails.send({ from: FROM, to, subject, html })
+    // Sends one email with a plain-text copy, replies going to the salon inbox.
+    // Resend reports refusals in its return value rather than throwing, so check it and log the reason.
+    const send = async (to, subject, html) => {
+      const { error } = await resend.emails.send({ from: FROM, to, subject, html, text: toText(html), replyTo: ADMIN })
+      if (error) console.error('Email not sent:', type, subject, error.name, error.message)
+    }
 
     if (type === 'booking_submitted') {
       await send(ADMIN, 'New Booking Request — Healthy Hair Club',
