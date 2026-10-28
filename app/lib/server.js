@@ -7,6 +7,19 @@ export const supabaseAdmin = createClient(
   { auth: { persistSession: false } }
 )
 
+// Which package each Stripe price belongs to. Includes the original £69 Essential price that existing members keep.
+export const LEGACY_PRICE_PACKAGE = { price_1U3fH3CQkQsronIFf170dIQy: 'essential' }
+export function packageForPrice(priceId) {
+  if (!priceId) return null
+  const map = {
+    ...LEGACY_PRICE_PACKAGE,
+    [process.env.NEXT_PUBLIC_STRIPE_PRICE_ESSENTIAL]: 'essential',
+    [process.env.NEXT_PUBLIC_STRIPE_PRICE_SIGNATURE]: 'signature',
+    [process.env.NEXT_PUBLIC_STRIPE_PRICE_ELITE]: 'elite',
+  }
+  return map[priceId] || null
+}
+
 // Elite monthly styling credit (GBP). Change here only.
 export const ELITE_MONTHLY_CREDIT = 30
 

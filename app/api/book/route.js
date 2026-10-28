@@ -6,7 +6,7 @@ export async function POST(req) {
     const user = await getUserFromReq(req)
     if (!user) return NextResponse.json({ error: 'Please sign in to book.' }, { status: 401 })
 
-    const { service, slotId, addons } = await req.json()
+    const { service, slotId, addons, complimentaryAddon } = await req.json()
     if (!service || !slotId) return NextResponse.json({ error: 'Choose a service and a time.' }, { status: 400 })
 
     const { data: client } = await supabase.from('clients').select('id, full_name, email').ilike('email', user.email).maybeSingle()
@@ -40,6 +40,20 @@ export async function POST(req) {
     }
 
     const addonList = Array.isArray(addons) ? addons.map(String).slice(0, 20) : []
+
+    // Optional: one add-on the member wants as complimentary. Must be on this booking and they must have one left.
+    let freeAddon = null
+    if (complimentaryAddon) {
+      freeAddon = String(complimentaryAddon)
+      if (!addonList.includes(freeAddon)) return NextResponse.json({ error: 'The complimentary add-on must be one of your chosen add-ons.' }, { status: 400 })
+      const { data: s1 } = await supabase.from('slots').select('slot_date').eq('id', slotId).maybeSingle()
+      const { data: mem1 } = await supabase.from('memberships').select('id')
+        .eq('client_id', client.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      const { data: ben1 } = mem1 && s1 ? await supabase.rpc('membership_benefits', { p_membership: mem1.id, p_on: s1.slot_date }) : { data: null }
+      if (!ben1 || ben1.complimentary.remaining < 1) {
+        return NextResponse.json({ error: 'You have no complimentary add-ons left this membership year.' }, { status: 409 })
+      }
+    }
     const { data: bookingId, error } = await supabase.rpc('create_booking', {
       p_client: client.id, p_slot: slotId, p_service: service, p_addons: addonList, p_notes: null,
     })
@@ -48,13 +62,15 @@ export async function POST(req) {
       return NextResponse.json({ error: taken ? 'Sorry, that time has just been taken. Please choose another.' : 'Booking failed. Please try again.' }, { status: taken ? 409 : 500 })
     }
 
+    if (freeAddon) await supabase.from('bookings').update({ complimentary_addon: freeAddon }).eq('id', bookingId)
+
     const { data: slot } = await supabase.from('slots').select('slot_date, slot_time').eq('id', slotId).single()
     await notify(req, 'booking_submitted', {
       clientName: client.full_name || client.email,
       service,
       date: slot ? new Date(slot.slot_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : '',
       time: slot ? String(slot.slot_time).slice(0, 5) : '',
-      addons: addonList.join(', '),
+      addons: addonList.join(', ') + (freeAddon ? ` (complimentary requested: ${freeAddon})` : ''),
       pkg: membership.package,
     })
 

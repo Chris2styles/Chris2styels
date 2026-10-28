@@ -34,7 +34,7 @@ function esc(v) {
 }
 
 // Emails anyone signed in may trigger (they only ever go to the salon).
-const MEMBER_TYPES = ['message_received']
+const MEMBER_TYPES = ['message_received', 'credit_gifted']
 // Emails that go to clients: only the server itself or a signed-in admin may trigger them.
 const PROTECTED_TYPES = ['booking_submitted', 'booking_confirmed', 'booking_declined', 'message_replied', 'payment_failed', 'payment_restored']
 
@@ -76,6 +76,13 @@ export async function POST(req) {
     if (type === 'message_received') {
       await send(ADMIN, 'New Message — Healthy Hair Club',
         emailWrap(`<h2>New Message from ${data.clientName}</h2><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p>${data.message}</p></div>${btn('Reply in Admin', URL+'/admin')}`)
+      )
+    }
+
+    if (type === 'credit_gifted') {
+      const user = internal ? null : await getUserFromReq(req)
+      await send(ADMIN, 'Elite Credit Gifted — Healthy Hair Club',
+        emailWrap(`<h2>An Elite member has gifted credit</h2><p><strong>From:</strong> ${esc(user?.email || 'Member')}</p><p><strong>To:</strong> ${data.recipient} (${data.contact})</p><p><strong>Amount:</strong> £${data.amount}</p><p><strong>Use by:</strong> ${data.expires}</p><p>You'll find it under Bookings → Gifted Elite credit when they come in.</p>${btn('View in Admin', URL+'/admin')}`)
       )
     }
 

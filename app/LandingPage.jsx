@@ -19,21 +19,22 @@ const PKGS = [
   {
     id:"essential",name:"Essential",sub:"Club Access",price:39,disc:10,badge:null,
     tagline:"Quarterly maintenance, priority access and member savings.",
-    included:["One full maintenance service every three months","One additional complimentary eligible service per membership year","Priority booking access","Members-only appointment slots","10% off styling and premium services","Professional healthy hair maintenance advice"],
+    included:["One full maintenance service every three months","One complimentary add-on per membership year (e.g. colour, a weave or plaits)","Priority booking access","Members-only appointment slots","10% off styling and premium services","Professional healthy hair maintenance advice"],
     excluded:"Complimentary aftercare products are not included with Essential.",
     cta:"Choose Essential"
   },
   {
     id:"signature",name:"Signature",sub:"Care",price:99,disc:15,badge:"Most Popular",
     tagline:"One monthly maintenance service plus ongoing member benefits.",
-    included:["One monthly maintenance service","Two additional complimentary eligible services per membership year","Complimentary Aftercare Products Provided","Hair and scalp assessment","Shampoo and cleanse","Professional treatment selected according to hair needs","Sustenance, Olaplex or K18 where appropriate","Trim where required","Basic styling","Healthy hair maintenance advice","Priority booking","15% off selected premium services"],
+    included:["One monthly maintenance service","Two complimentary add-ons per membership year (e.g. colour, a weave or plaits)","Complimentary Aftercare Products Provided","Hair and scalp assessment","Shampoo and cleanse","Professional treatment selected according to hair needs","Sustenance, Olaplex or K18 where appropriate","Trim where required","Basic styling","Healthy hair maintenance advice","Priority booking","15% off selected premium services"],
     excluded:null,
     cta:"Choose Signature"
   },
   {
     id:"elite",name:"Elite",sub:"VIP",price:149,disc:20,badge:"Premium",
     tagline:"The highest level of care and flexibility.",
-    included:["One monthly maintenance service","Two additional complimentary eligible services per membership year","Complimentary Aftercare Products Provided","\u00A330 monthly premium styling credit","Priority appointments","Free consultations","Birthday Glam bonus","Exclusive member benefits"],
+    included:["One monthly maintenance service","Two complimentary add-ons per membership year (e.g. colour, a weave or plaits)","Complimentary Aftercare Products Provided","\u00A330 monthly premium styling credit",
+"Gift your credit to family and friends","Priority appointments","Free consultations","Birthday Glam bonus","Exclusive member benefits"],
     excluded:null,
     cta:"Choose Elite"
   },
@@ -62,11 +63,13 @@ const STEPS = [
 
 const FAQS = [
   {q:"Which membership is right for me?",a:"Essential (£39) includes one full maintenance service every three months, priority booking and member discounts. Signature (£99) is our most popular — it includes one monthly maintenance service and Complimentary Aftercare Products Provided. Elite (£149) is for clients who want the highest level of care and flexibility, including a £30 monthly premium styling credit."},
-  {q:"What is included in Signature?",a:"Signature includes one monthly maintenance service with hair and scalp assessment, shampoo and cleanse, a professional treatment selected according to your hair's needs, a trim where required, basic styling and healthy hair maintenance advice. You also receive two additional complimentary eligible services per membership year, Complimentary Aftercare Products Provided, priority booking and 15% off selected premium services."},
+  {q:"What is included in Signature?",a:"Signature includes one monthly maintenance service with hair and scalp assessment, shampoo and cleanse, a professional treatment selected according to your hair's needs, a trim where required, basic styling and healthy hair maintenance advice. You also receive two complimentary add-ons per membership year, Complimentary Aftercare Products Provided, priority booking and 15% off selected premium services."},
   {q:"Are all three treatments included every month?",a:"No. Sustenance, Olaplex and K18 are not all applied simultaneously. Your stylist will assess your hair at each appointment and select the most appropriate treatment according to your hair's condition and needs."},
   {q:"What happens if my payment fails?",a:"If your payment fails, your booking access is temporarily paused. You will receive a notification to update your payment details. Once resolved, your access is automatically restored."},
-  {q:"Can I upgrade or downgrade?",a:"Yes. Please contact the salon directly to discuss changing your membership level."},
-  {q:"Do unused appointments roll over?",a:"Monthly sessions are valid within your current billing month. Unused sessions do not automatically roll over."},
+  {q:"Can I upgrade or downgrade?",a:"Yes. Please contact the salon to change your membership level. The change takes effect from your next payment date."},
+  {q:"Do unused appointments roll over?",a:"No. Maintenance services must be used within their period — each membership month for Signature and Elite, and each three-month period for Essential. Unused services do not roll over."},
+  {q:"What is a complimentary add-on?",a:"Each complimentary add-on makes one add-on of your choice free on a visit — for example colour, a weave or plaits. Essential includes one per membership year; Signature and Elite include two. They reset each membership year and unused ones expire."},
+  {q:"Can I gift my Elite credit?",a:"Yes. Elite members can gift some or all of their monthly £30 styling credit to anyone they like — family, friends or someone new to the salon — from their dashboard. Gifted credit must be used by the end of that membership month."},
   {q:"How do priority appointments work?",a:"Members receive earlier access to selected appointment slots before they are released to the general public. This means you are more likely to secure your preferred time with your stylist."},
   {q:"Can I cancel my membership?",a:"Yes. You can cancel anytime. Cancellations take effect at the end of your current billing month. There are no cancellation fees."},
   {q:"Can I speak directly to the salon?",a:"Yes. If you have a question that requires professional judgement or personal advice, you can always contact Chris 2 Styles Salon directly at 020 3754 7889 or christine.walker@hairdresser.net."},

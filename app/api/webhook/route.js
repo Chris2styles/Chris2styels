@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { supabaseAdmin as supabase, ELITE_MONTHLY_CREDIT, notify } from '../../lib/server'
+import { supabaseAdmin as supabase, ELITE_MONTHLY_CREDIT, notify, packageForPrice } from '../../lib/server'
 
 const SESSIONS = { essential: 0, signature: 1, elite: 1 }
 
@@ -19,6 +19,20 @@ function periodOf(invoice) {
     current_period_start: new Date(p.start * 1000).toISOString(),
     current_period_end: new Date(p.end * 1000).toISOString(),
   }
+}
+
+function priceOfInvoice(invoice) {
+  const line = invoice.lines?.data?.[0]
+  return line?.price?.id || line?.pricing?.price_details?.price || line?.plan?.id || null
+}
+
+// Package changes take effect at the next payment date: when the renewal invoice is for a different
+// package's price (or Stripe switches the subscription's price), the app's membership follows it.
+async function syncPackage(subId, priceId) {
+  const pkg = packageForPrice(priceId)
+  if (!subId || !pkg) return
+  const { error } = await supabase.rpc('change_package', { p_sub: subId, p_package: pkg })
+  if (error) throw error
 }
 
 async function membershipForSub(subId) {
@@ -65,6 +79,7 @@ async function handleCheckoutCompleted(session) {
 async function handleInvoicePaid(req, invoice) {
   const subId = subIdOf(invoice)
   if (!subId) return // not a membership invoice
+  if (['subscription_cycle', 'subscription_update'].includes(invoice.billing_reason)) await syncPackage(subId, priceOfInvoice(invoice))
   const m = await membershipForSub(subId)
   // invoice.paid can arrive before checkout.session.completed; ask Stripe to retry shortly.
   if (!m) throw new RetryLater('membership not created yet for ' + subId)
@@ -115,6 +130,10 @@ async function handlePaymentFailed(req, invoice) {
   })
 }
 
+async function handleSubscriptionUpdated(sub) {
+  await syncPackage(sub.id, sub.items?.data?.[0]?.price?.id)
+}
+
 async function handleSubscriptionDeleted(sub) {
   await supabase.from('memberships').update({ status: 'cancelled' }).eq('stripe_sub_id', sub.id)
 }
@@ -144,6 +163,7 @@ export async function POST(req) {
       case 'checkout.session.completed': await handleCheckoutCompleted(event.data.object); break
       case 'invoice.paid': await handleInvoicePaid(req, event.data.object); break
       case 'invoice.payment_failed': await handlePaymentFailed(req, event.data.object); break
+      case 'customer.subscription.updated': await handleSubscriptionUpdated(event.data.object); break
       case 'customer.subscription.deleted': await handleSubscriptionDeleted(event.data.object); break
       default: break
     }
