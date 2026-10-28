@@ -1,6 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 
+// Founder photograph: set to e.g. '/photos/christine.jpg' once Christine's original photo is uploaded to public/photos.
+// Left empty, the section shows a clearly marked placeholder (no stock or AI image).
+const FOUNDER_PHOTO = ''
+
 const G = {
   gold:"#C9A84C",goldLt:"#E2C97E",goldDk:"#9A7A2E",goldPale:"#F5EDD0",
   black:"#080808",charcoal:"#111",ink:"#1A1A1A",
@@ -14,22 +18,22 @@ const BD="'Helvetica Neue',Helvetica,Arial,sans-serif"
 const PKGS = [
   {
     id:"essential",name:"Essential",sub:"Club Access",price:39,disc:10,badge:null,
-    tagline:"Priority access and member benefits.",
-    included:["Priority booking access","Members-only appointment slots","10% off styling and premium services","Healthy hair maintenance advice","Early access to selected appointments"],
-    excluded:"Monthly maintenance appointment not included.",
+    tagline:"Quarterly maintenance, priority access and member savings.",
+    included:["One full maintenance service every three months","One additional complimentary eligible service per membership year","Priority booking access","Members-only appointment slots","10% off styling and premium services","Professional healthy hair maintenance advice"],
+    excluded:"Complimentary aftercare products are not included with Essential.",
     cta:"Choose Essential"
   },
   {
     id:"signature",name:"Signature",sub:"Care",price:99,disc:15,badge:"Most Popular",
-    tagline:"One monthly maintenance appointment plus ongoing member benefits.",
-    included:["One monthly maintenance appointment","Hair and scalp assessment","Shampoo and cleanse","Professional treatment selected according to hair needs","Sustenance, Olaplex or K18 where appropriate","Trim where required","Basic styling","Healthy hair maintenance advice","Priority booking","15% off selected premium services"],
+    tagline:"One monthly maintenance service plus ongoing member benefits.",
+    included:["One monthly maintenance service","Two additional complimentary eligible services per membership year","Complimentary Aftercare Products Provided","Hair and scalp assessment","Shampoo and cleanse","Professional treatment selected according to hair needs","Sustenance, Olaplex or K18 where appropriate","Trim where required","Basic styling","Healthy hair maintenance advice","Priority booking","15% off selected premium services"],
     excluded:null,
-    cta:"Choose Signature Care"
+    cta:"Choose Signature"
   },
   {
     id:"elite",name:"Elite",sub:"VIP",price:149,disc:20,badge:"Premium",
     tagline:"The highest level of care and flexibility.",
-    included:["Full monthly maintenance","Credit toward eligible premium styles","Priority appointments","Free consultations","Exclusive member benefits","Birthday Glam bonus","Eligible unused credit may be transferred to a family member"],
+    included:["One monthly maintenance service","Two additional complimentary eligible services per membership year","Complimentary Aftercare Products Provided","\u00A330 monthly premium styling credit","Priority appointments","Free consultations","Birthday Glam bonus","Exclusive member benefits"],
     excluded:null,
     cta:"Choose Elite"
   },
@@ -57,8 +61,8 @@ const STEPS = [
 ]
 
 const FAQS = [
-  {q:"Which membership is right for me?",a:"Essential (£39) is ideal if you want priority booking and member discounts without a monthly appointment. Signature Care (£99) is our most popular — it includes one monthly maintenance appointment. Elite (£149) is for clients who want the highest level of care and flexibility including credit toward premium services."},
-  {q:"What is included in Signature Care?",a:"Signature Care includes one monthly maintenance appointment with hair and scalp assessment, shampoo and cleanse, a professional treatment selected according to your hair's needs, a trim where required, basic styling and healthy hair maintenance advice. You also receive priority booking and 15% off selected premium services."},
+  {q:"Which membership is right for me?",a:"Essential (£39) includes one full maintenance service every three months, priority booking and member discounts. Signature (£99) is our most popular — it includes one monthly maintenance service and Complimentary Aftercare Products Provided. Elite (£149) is for clients who want the highest level of care and flexibility, including a £30 monthly premium styling credit."},
+  {q:"What is included in Signature?",a:"Signature includes one monthly maintenance service with hair and scalp assessment, shampoo and cleanse, a professional treatment selected according to your hair's needs, a trim where required, basic styling and healthy hair maintenance advice. You also receive two additional complimentary eligible services per membership year, Complimentary Aftercare Products Provided, priority booking and 15% off selected premium services."},
   {q:"Are all three treatments included every month?",a:"No. Sustenance, Olaplex and K18 are not all applied simultaneously. Your stylist will assess your hair at each appointment and select the most appropriate treatment according to your hair's condition and needs."},
   {q:"What happens if my payment fails?",a:"If your payment fails, your booking access is temporarily paused. You will receive a notification to update your payment details. Once resolved, your access is automatically restored."},
   {q:"Can I upgrade or downgrade?",a:"Yes. Please contact the salon directly to discuss changing your membership level."},
@@ -95,6 +99,7 @@ function trackEvent(name, data={}) {
 export default function LandingPage({onJoin, onSignIn}) {
   useUTM()
   const [openFaq, setOpenFaq] = useState(null)
+  const [storyOpen, setStoryOpen] = useState(false)
 
   function handleChoose(pkgId) {
     trackEvent('package_selected', {package: pkgId})
@@ -259,32 +264,62 @@ export default function LandingPage({onJoin, onSignIn}) {
         </div>
       </section>
 
-      {/* FOUNDER */}
-      <section style={{background:G.creamLt,padding:'64px 20px'}}>
-        <div style={{maxWidth:700,margin:'0 auto'}}>
+      {/* FOUNDER — approved story, exact wording */}
+      <section id="founder" style={{background:G.creamLt,padding:'72px 20px'}}>
+        <div style={{maxWidth:960,margin:'0 auto'}}>
           <div style={{textAlign:'center',marginBottom:40}}>
-            <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:'uppercase',marginBottom:12}}>Your Stylist</div>
-            <h2 style={{fontFamily:SR,fontSize:28,color:G.ink,fontWeight:400,fontStyle:'italic',margin:0}}>Over 20 Years of Professional Hair Experience</h2>
+            <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:'uppercase',marginBottom:12}}>Our Founder</div>
+            <h2 style={{fontFamily:SR,fontSize:30,color:G.ink,fontWeight:400,fontStyle:'italic',margin:0,lineHeight:1.3}}>Meet Christine — The Woman Behind Healthy Hair Club</h2>
           </div>
-          <div style={{background:G.white,borderRadius:14,overflow:'hidden',border:'1px solid '+G.creamDk}}>
-            {/* Photo placeholder */}
-            <div style={{height:280,background:'linear-gradient(135deg,'+G.goldDk+','+G.gold+')',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column'}}>
-              <div style={{width:80,height:80,borderRadius:'50%',background:'rgba(255,255,255,0.2)',border:'2px solid rgba(255,255,255,0.5)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:16}}>
-                <span style={{color:G.white,fontSize:32,fontFamily:SR,fontStyle:'italic'}}>C</span>
-              </div>
-              <div style={{color:'rgba(255,255,255,0.8)',fontSize:12,letterSpacing:2,textTransform:'uppercase'}}>Christine Walker · Founder</div>
-              <div style={{color:'rgba(255,255,255,0.5)',fontSize:11,marginTop:4}}>Photo coming soon</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:32,alignItems:'start'}}>
+            <div style={{position:'relative',borderRadius:14,overflow:'hidden',border:'1px solid '+G.creamDk,background:G.white,aspectRatio:'4 / 5',maxWidth:420,width:'100%',margin:'0 auto'}}>
+              {FOUNDER_PHOTO ? (
+                <img src={FOUNDER_PHOTO} alt="Christine Walker, founder of Chris 2 Styles Salon and Healthy Hair Club" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',display:'block'}}/>
+              ) : (
+                <div style={{width:'100%',height:'100%',background:'linear-gradient(160deg,'+G.goldDk+','+G.gold+')',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:24,boxSizing:'border-box'}}>
+                  <div style={{width:88,height:88,borderRadius:'50%',border:'2px solid rgba(255,255,255,0.55)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:16}}>
+                    <span style={{color:G.white,fontSize:36,fontFamily:SR,fontStyle:'italic'}}>C</span>
+                  </div>
+                  <div style={{color:G.white,fontSize:12,letterSpacing:2,textTransform:'uppercase'}}>Christine Walker</div>
+                  <div style={{color:'rgba(255,255,255,0.75)',fontSize:11,marginTop:6}}>Founder photograph coming soon</div>
+                </div>
+              )}
             </div>
-            <div style={{padding:'28px 28px 32px'}}>
-              <p style={{color:G.dim,fontSize:15,lineHeight:1.85,margin:'0 0 16px'}}>
-                Healthy Hair Club was created from over 20 years of experience working closely with clients and recognising that consistent maintenance and professional guidance can be just as important as the finished hairstyle.
+            <div style={{background:G.white,borderRadius:14,border:'1px solid '+G.creamDk,padding:'32px 28px'}}>
+              <p style={{color:G.dim,fontSize:16,lineHeight:1.85,margin:'0 0 16px'}}>
+                My journey in hairdressing began over 22 years ago, driven by a passion for creativity, beauty and helping people feel confident in themselves.
               </p>
-              <p style={{color:G.dim,fontSize:15,lineHeight:1.85,margin:0}}>
-                Rather than simply booking individual appointments when hair becomes difficult to manage, Healthy Hair Club gives clients a structured approach to ongoing professional care throughout the year.
+              <p style={{color:G.dim,fontSize:16,lineHeight:1.85,margin:0}}>
+                As an award-winning hairstylist, I've been fortunate to receive recognition within the hair and beauty industry, including the Black Hair and Beauty Awards, alongside nominations and finalist honours for Stylist of the Year and Styling Team of the Year. While these achievements mean a great deal to me, what has always mattered most is the difference I can make in the lives of the women who sit in my chair.
               </p>
+              <div id="founder-story-more" hidden={!storyOpen} style={{marginTop:16}}>
+                <p style={{color:G.dim,fontSize:16,lineHeight:1.85,margin:'0 0 16px'}}>
+                  Over the years, I've had the privilege of working with countless clients, learning about their individual hair needs, challenges and goals. One thing I've come to understand is that beautiful, healthy hair isn't achieved through occasional appointments or following the latest trends. It's built through consistency, professional knowledge and personalised care.
+                </p>
+                <p style={{color:G.dim,fontSize:16,lineHeight:1.85,margin:'0 0 16px'}}>
+                  When I opened Chris 2 Styles Salon in 2016, my vision was to create more than somewhere women came to have their hair styled. I wanted to create a community — a space where women could come together, feel at peace, be listened to, understood and genuinely cared for. Somewhere they could take time for themselves, feel a sense of belonging and, most importantly, feel at home.
+                </p>
+                <p style={{color:G.ink,fontSize:16,lineHeight:1.85,margin:'0 0 16px',fontWeight:700}}>
+                  Healthy Hair Club was born from that same philosophy.
+                </p>
+                <p style={{color:G.dim,fontSize:16,lineHeight:1.85,margin:'0 0 16px'}}>
+                  I wanted to bring together a community of women who value their hair health, understand the importance of regular maintenance and appreciate having a trusted professional supporting them throughout their hair journey.
+                </p>
+                <p style={{color:G.dim,fontSize:16,lineHeight:1.85,margin:'0 0 16px'}}>
+                  Through Healthy Hair Club, my goal is to make consistent, personalised hair care more accessible, convenient and rewarding, while continuing to nurture the sense of community that has always been at the heart of my salon.
+                </p>
+                <p style={{color:G.ink,fontSize:17,lineHeight:1.8,margin:0,fontFamily:SR,fontStyle:'italic',borderLeft:'3px solid '+G.gold,paddingLeft:18}}>
+                  Because to me, healthy hair is more than a service. It's about confidence, self-care, connection and belonging.
+                </p>
+              </div>
+              <button type="button" aria-expanded={storyOpen} aria-controls="founder-story-more"
+                onClick={()=>{if(!storyOpen)trackEvent('read_my_story');setStoryOpen(!storyOpen)}}
+                style={{marginTop:24,background:'transparent',border:'1px solid '+G.gold,color:G.goldDk,borderRadius:4,padding:'12px 22px',fontSize:12,fontFamily:DP,fontWeight:700,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer'}}>
+                {storyOpen?'Show Less':'Read My Story'}
+              </button>
               <div style={{marginTop:24,paddingTop:20,borderTop:'1px solid '+G.creamDk}}>
-                <div style={{color:G.ink,fontWeight:700,fontSize:14}}>Christine Walker</div>
-                <div style={{color:G.goldDk,fontSize:13,marginTop:2}}>Owner · Chris 2 Styles Salon · Streatham SW16</div>
+                <div style={{color:G.ink,fontWeight:700,fontSize:15}}>Christine Walker</div>
+                <div style={{color:G.goldDk,fontSize:13,marginTop:2,fontStyle:'italic'}}>Founder, Chris 2 Styles Salon &amp; Healthy Hair Club</div>
               </div>
             </div>
           </div>

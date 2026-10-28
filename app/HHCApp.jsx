@@ -10,7 +10,8 @@ async function authFetch(url,opts={}){
   return fetch(url,{...opts,headers:{'Content-Type':'application/json',...(opts.headers||{}),...(session?{Authorization:'Bearer '+session.access_token}:{})}});
 }
 const PKG_DISC={essential:10,signature:15,elite:20};
-const PKG_NAME={essential:"Essential",signature:"Signature Care",elite:"Elite"};
+const PKG_NAME={essential:"Essential",signature:"Signature",elite:"Elite"};
+const STATUS_LABEL={active:"Active",payment_failed:"Payment issue",cancelled:"Cancelled",paused:"Paused"};
 function fmtSlotDate(d){if(!d)return '';const x=new Date(String(d).slice(0,10)+'T00:00:00');return x.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}
 function fmtMoney(n){return '\u00A3'+Number(n||0).toFixed(2);}
 function latestMembership(list,clientId){return (list||[]).filter(m=>m.client_id===clientId).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0]||null;}
@@ -125,14 +126,14 @@ const BD="'Helvetica Neue',Helvetica,Arial,sans-serif";
 // DATA
 const PKGS=[
   {id:"essential",name:"Essential",sub:"Club Access",price:39,disc:10,badge:null,img:HAIR_STRAIGHT,
-   tagline:"Priority access, discounts and support.",
-   benefits:["Priority booking access","Members-only slots","10% off styling","Healthy hair advice","Early access to offers"]},
+   tagline:"Quarterly maintenance, priority access and member savings.",
+   benefits:["1 full maintenance service every 3 months","1 extra complimentary eligible service per membership year","Priority booking access","Members-only slots","10% off styling and premium services","Professional maintenance advice"]},
   {id:"signature",name:"Signature",sub:"Care",price:99,disc:15,badge:"Most Popular",img:HAIR_BRAIDS,
    tagline:"Everything you need for consistently healthy hair, every month.",
-   benefits:["1 monthly maintenance appointment","Hair and scalp assessment","Shampoo, conditioning and treatments","Sustenance / Olaplex / K18 when suitable","Scalp care, trim if needed","Basic styling included","Priority booking access","15% off selected premium services"]},
+   benefits:["1 monthly maintenance service","2 extra complimentary eligible services per membership year","Complimentary Aftercare Products Provided","Hair and scalp assessment","Shampoo, conditioning and treatments","Sustenance / Olaplex / K18 when suitable","Scalp care, trim if needed","Basic styling included","Priority booking access","15% off selected premium services"]},
   {id:"elite",name:"Elite",sub:"VIP",price:149,disc:20,badge:"Premium",img:HAIR_STYLING,
    tagline:"The full experience. Premium care and exclusive perks.",
-   benefits:["Full monthly maintenance","\u00A330 monthly credit toward premium styles","Priority appointments","Free consultations","Exclusive member perks","Birthday Glam bonus"]},
+   benefits:["1 monthly maintenance service","2 extra complimentary eligible services per membership year","Complimentary Aftercare Products Provided","\u00A330 monthly premium styling credit","Priority appointments","Free consultations","Birthday Glam bonus","Exclusive member perks"]},
 ];
 
 const SVCMAP={
@@ -710,23 +711,23 @@ function ClientDashboard({onBook,onLogout}) {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div>
                 <div style={{color:"rgba(255,255,255,0.75)",fontSize:10,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>Healthy Hair Club</div>
-                <div style={{fontFamily:SR,color:"#FFF",fontSize:22,fontStyle:"italic",marginBottom:2}}>Signature Care</div>
-                <div style={{color:"rgba(255,255,255,0.85)",fontSize:13}}>{"£"}99 / month · Active</div>
+                <div style={{fontFamily:SR,color:"#FFF",fontSize:22,fontStyle:"italic",marginBottom:2}}>{PKG_NAME[mem.pkg]||"Member"}</div>
+                <div style={{color:"rgba(255,255,255,0.85)",fontSize:13}}>Healthy Hair Club · {STATUS_LABEL[mem.status]||"Active"}</div>
               </div>
               <div style={{textAlign:"right"}}>
-                <div style={{background:"rgba(255,255,255,0.2)",borderRadius:20,padding:"4px 12px",fontSize:11,color:"#fff",fontWeight:700,marginBottom:8}}>Active</div>
+                <div style={{background:"rgba(255,255,255,0.2)",borderRadius:20,padding:"4px 12px",fontSize:11,color:"#fff",fontWeight:700,marginBottom:8}}>{STATUS_LABEL[mem.status]||"Active"}</div>
                 <div style={{color:"rgba(255,255,255,0.75)",fontSize:11}}>Next: {mem.next}</div>
               </div>
             </div>
-            <div style={{marginTop:16}}>
+            {mem.total>0&&<div style={{marginTop:16}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                <span style={{color:"rgba(255,255,255,0.75)",fontSize:11}}>Monthly session</span>
+                <span style={{color:"rgba(255,255,255,0.75)",fontSize:11}}>Maintenance service this month</span>
                 <span style={{color:"#fff",fontSize:11,fontWeight:700}}>{mem.used}/{mem.total} used</span>
               </div>
               <div style={{height:5,background:"rgba(255,255,255,0.25)",borderRadius:4}}>
                 <div style={{height:5,background:"#fff",borderRadius:4,width:(mem.total>0?(mem.used/mem.total)*100:0)+"%"}}/>
               </div>
-            </div>
+            </div>}
             <div style={{marginTop:12,color:"rgba(255,255,255,0.7)",fontSize:11}}>{mOpen?"Hide details":"Tap to see everything included"}</div>
           </div>
 
@@ -742,7 +743,7 @@ function ClientDashboard({onBook,onLogout}) {
                 ))}
               </div>
               <div style={{background:G.creamLt,borderRadius:10,padding:16,marginBottom:14,border:"1px solid "+G.creamDk}}>
-                <div style={{fontWeight:700,color:"#1A1A1A",fontSize:13,marginBottom:4}}>Monthly Maintenance Appointment</div>
+                <div style={{fontWeight:700,color:"#1A1A1A",fontSize:13,marginBottom:4}}>{mem.pkg==="essential"?"Quarterly Maintenance Service":"Monthly Maintenance Service"}</div>
                 <p style={{color:"#666",fontSize:12,lineHeight:1.7,margin:"0 0 12px"}}>Your appointment is personalised to your hair needs. Your stylist selects the most suitable treatments from the options below.</p>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   {TREATS.map((t,i)=>(
@@ -758,7 +759,7 @@ function ClientDashboard({onBook,onLogout}) {
               </div>
               <div style={{background:"#F0EBE0",borderRadius:8,padding:"11px 14px",display:"flex",gap:10,alignItems:"flex-start"}}>
                 <span style={{fontSize:16,flexShrink:0}}>💡</span>
-                <p style={{color:"#5A4A2A",fontSize:12,margin:0,lineHeight:1.65}}>Your discount: 15% off selected premium services, applied automatically when you book.</p>
+                <p style={{color:"#5A4A2A",fontSize:12,margin:0,lineHeight:1.65}}>Your discount: {PKG_DISC[mem.pkg]||10}% off {mem.pkg==="essential"?"styling and premium services":"selected premium services"}, applied automatically when you book.</p>
               </div>
             </div>
           )}

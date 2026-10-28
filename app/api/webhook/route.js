@@ -23,8 +23,11 @@ function periodOf(invoice) {
 
 async function membershipForSub(subId) {
   if (!subId) return null
-  const { data } = await supabase.from('memberships').select('*, clients(full_name,email)').eq('stripe_sub_id', subId).maybeSingle()
-  return data
+  // Newest record wins if a subscription was ever saved twice (maybeSingle() would fail and block renewals).
+  const { data, error } = await supabase.from('memberships').select('*, clients(full_name,email)')
+    .eq('stripe_sub_id', subId).order('created_at', { ascending: false }).limit(1)
+  if (error) throw error
+  return data?.[0] || null
 }
 
 class RetryLater extends Error {}
