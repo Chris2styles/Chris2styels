@@ -13,7 +13,7 @@ const BD="'Helvetica Neue',Helvetica,Arial,sans-serif"
 
 const PKGS = [
   {
-    id:"essential",name:"Essential",sub:"Club Access",price:69,disc:10,badge:null,
+    id:"essential",name:"Essential",sub:"Club Access",price:39,disc:10,badge:null,
     tagline:"Priority access and member benefits.",
     included:["Priority booking access","Members-only appointment slots","10% off styling and premium services","Healthy hair maintenance advice","Early access to selected appointments"],
     excluded:"Monthly maintenance appointment not included.",
@@ -57,7 +57,7 @@ const STEPS = [
 ]
 
 const FAQS = [
-  {q:"Which membership is right for me?",a:"Essential (£69) is ideal if you want priority booking and member discounts without a monthly appointment. Signature Care (£99) is our most popular — it includes one monthly maintenance appointment. Elite (£149) is for clients who want the highest level of care and flexibility including credit toward premium services."},
+  {q:"Which membership is right for me?",a:"Essential (£39) is ideal if you want priority booking and member discounts without a monthly appointment. Signature Care (£99) is our most popular — it includes one monthly maintenance appointment. Elite (£149) is for clients who want the highest level of care and flexibility including credit toward premium services."},
   {q:"What is included in Signature Care?",a:"Signature Care includes one monthly maintenance appointment with hair and scalp assessment, shampoo and cleanse, a professional treatment selected according to your hair's needs, a trim where required, basic styling and healthy hair maintenance advice. You also receive priority booking and 15% off selected premium services."},
   {q:"Are all three treatments included every month?",a:"No. Sustenance, Olaplex and K18 are not all applied simultaneously. Your stylist will assess your hair at each appointment and select the most appropriate treatment according to your hair's condition and needs."},
   {q:"What happens if my payment fails?",a:"If your payment fails, your booking access is temporarily paused. You will receive a notification to update your payment details. Once resolved, your access is automatically restored."},
@@ -128,7 +128,7 @@ export default function LandingPage({onJoin, onSignIn}) {
             Professional hair maintenance, priority booking and exclusive member benefits from Chris 2 Styles Salon.
           </p>
           <div style={{color:G.goldLt,fontSize:18,fontWeight:700,fontFamily:DP,marginBottom:32,letterSpacing:1}}>
-            Memberships from £69/month
+            Memberships from £39/month
           </div>
           <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
             <button onClick={()=>{trackEvent('explore_memberships_hero');document.getElementById('memberships').scrollIntoView({behavior:'smooth'})}}

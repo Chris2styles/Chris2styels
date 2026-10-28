@@ -124,7 +124,7 @@ const BD="'Helvetica Neue',Helvetica,Arial,sans-serif";
 
 // DATA
 const PKGS=[
-  {id:"essential",name:"Essential",sub:"Club Access",price:69,disc:10,badge:null,img:HAIR_STRAIGHT,
+  {id:"essential",name:"Essential",sub:"Club Access",price:39,disc:10,badge:null,img:HAIR_STRAIGHT,
    tagline:"Priority access, discounts and support.",
    benefits:["Priority booking access","Members-only slots","10% off styling","Healthy hair advice","Early access to offers"]},
   {id:"signature",name:"Signature",sub:"Care",price:99,disc:15,badge:"Most Popular",img:HAIR_BRAIDS,
@@ -285,7 +285,7 @@ const TCSUMMARY=[
 ];
 
 const TCSECTIONS=[
-  {t:"1. Membership Overview",b:"The Healthy Hair Club is a monthly subscription offered by Chris 2 Styles Salon. Three tiers: Essential (69/mo), Signature Care (99/mo), Elite (149/mo). By registering you enter a monthly rolling agreement."},
+  {t:"1. Membership Overview",b:"The Healthy Hair Club is a monthly subscription offered by Chris 2 Styles Salon. Three tiers: Essential (39/mo), Signature Care (99/mo), Elite (149/mo). By registering you enter a monthly rolling agreement."},
   {t:"2. Payments and Renewal",b:"Your membership renews automatically each month on your billing date unless you cancel. Payment is collected securely via Stripe. Benefits are only active while payment is up to date. Fees are non-refundable once a billing period has commenced."},
   {t:"3. Failed Payments",b:"If your payment fails, your membership moves to Payment Failed and benefits are suspended. You cannot access priority slots, discounts or complimentary appointments. Once payment is processed, benefits restore automatically."},
   {t:"4. Cancellation",b:"You may cancel anytime from your dashboard or by contacting us. Cancellations take effect at the end of your current billing month. No partial refunds for unused days or sessions within a started billing period."},
