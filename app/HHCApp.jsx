@@ -32,8 +32,8 @@ async function adminLoadBookings(){
       status:b.status||'pending',pkg:mem?.package||'essential',membershipId:mem?.id||null,credit:Number(mem?.style_credit||0),creditApplied:Number(b.credit_applied||0)};
   });
 }
-async function adminApproveBooking(b,credit){
-  const {data,error}=await supabase.rpc('approve_booking',{p_booking:b.id,p_credit:Number(credit)||0});
+async function adminApproveBooking(b,credit,useComp=false){
+  const {data,error}=await supabase.rpc('approve_booking',{p_booking:b.id,p_credit:Number(credit)||0,p_use_complimentary:!!useComp});
   if(error){alert('Could not approve: '+error.message);return null;}
   try{await authFetch('/api/notify',{method:'POST',body:JSON.stringify({type:'booking_confirmed',data:{clientEmail:b.clientEmail,clientName:b.client,service:b.service,date:b.date,time:b.time,creditApplied:Number(data?.credit_applied||0).toFixed(2),creditBalance:Number(data?.balance||0).toFixed(2)}})});}catch(e){console.log('Notify error:',e);}
   return data;
@@ -54,7 +54,7 @@ function CreditPanel({membershipId,admin=false}){
   }
   React.useEffect(()=>{load();},[membershipId]);
   const bal=(rows||[]).reduce((t,r)=>t+Number(r.amount),0);
-  const label={issue:"Monthly credit",redeem:"Used",adjustment:"Adjustment"};
+  const label={issue:"Monthly credit",redeem:"Used",adjustment:"Adjustment",expiry:"Expired"};
   return (
     <div style={{background:"#FFF",borderRadius:14,border:"1px solid "+G.creamDk,padding:"18px 20px",marginBottom:14}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -62,7 +62,7 @@ function CreditPanel({membershipId,admin=false}){
         <span style={{background:G.goldPale,color:G.goldDk,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20}}>Elite</span>
       </div>
       <div style={{fontFamily:SR,fontSize:30,color:"#1A1A1A",margin:"8px 0 2px"}}>{rows===null?"...":fmtMoney(bal)}</div>
-      <div style={{color:"#888",fontSize:12,marginBottom:12}}>{admin?"Current balance":"Added after each monthly payment. Applied by the salon when your appointment is approved."}</div>
+      <div style={{color:"#888",fontSize:12,marginBottom:12}}>{admin?"Current balance \u00B7 unused credit expires when the next month's \u00A330 is added":"\u00A330 is added after each monthly payment and applied by the salon when your appointment is approved. Unused credit expires when the next month's credit is added."}</div>
       {(rows||[]).length===0&&rows!==null&&<div style={{color:"#AAA",fontSize:13}}>No credit history yet.</div>}
       {(rows||[]).map(r=>(
         <div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderTop:"1px solid #F5F3EE",fontSize:13}}>
@@ -84,17 +84,94 @@ function CreditPanel({membershipId,admin=false}){
     </div>
   );
 }
+function fmtDay(d){if(!d)return '';return new Date(String(d).slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
+function useBenefits(membershipId){
+  const [ben,setBen]=React.useState(null);
+  const load=React.useCallback(async()=>{
+    if(!membershipId){setBen(null);return;}
+    const {data,error}=await supabase.rpc('membership_benefits',{p_membership:membershipId});
+    setBen(error?{error:error.message}:data);
+  },[membershipId]);
+  React.useEffect(()=>{load();},[load]);
+  return [ben,load];
+}
+function BenefitsPanel({membershipId,admin=false}){
+  const [ben,reload]=useBenefits(membershipId);
+  const [hist,setHist]=React.useState([]);
+  const [note,setNote]=React.useState("");
+  const loadHist=React.useCallback(async()=>{
+    if(!admin||!membershipId)return;
+    const {data}=await supabase.from('benefit_redemptions').select('*').eq('membership_id',membershipId).order('created_at',{ascending:false}).limit(20);
+    setHist(data||[]);
+  },[admin,membershipId]);
+  React.useEffect(()=>{loadHist();},[loadHist]);
+  if(!membershipId)return null;
+  const box={background:"#FFF",borderRadius:14,border:"1px solid "+G.creamDk,padding:"18px 20px",marginBottom:14};
+  if(!ben)return <div style={box}><div style={{color:"#AAA",fontSize:13}}>Loading your benefits...</div></div>;
+  if(ben.error)return <div style={box}><div style={{color:"#AAA",fontSize:13}}>Benefits could not be loaded. Please refresh.</div></div>;
+  const mt=ben.maintenance,cp=ben.complimentary;
+  const row=(title,main,sub)=>(
+    <div style={{padding:"12px 0",borderTop:"1px solid #F5F3EE"}}>
+      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"baseline"}}>
+        <span style={{fontWeight:700,color:"#1A1A1A",fontSize:14}}>{title}</span>
+        <span style={{fontWeight:700,color:G.goldDk,fontSize:14,whiteSpace:"nowrap"}}>{main}</span>
+      </div>
+      <div style={{color:"#888",fontSize:12,marginTop:3,lineHeight:1.5}}>{sub}</div>
+    </div>);
+  const maintTitle=mt.cadence==='quarterly'?"Quarterly maintenance service":"Monthly maintenance service";
+  const maintMain=mt.started?(mt.remaining+" of "+mt.allowed+" available"):"Not yet available";
+  const maintSub=mt.started?("Current period: "+fmtDay(mt.window_start)+" – "+fmtDay(mt.window_end)):("Your first quarterly maintenance service is available from "+fmtDay(mt.window_start)+".");
+  const labels={maintenance:"Maintenance service",complimentary:"Complimentary service",aftercare:"Aftercare products"};
+  return (
+    <div style={box}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+        <div style={{fontWeight:700,color:"#1A1A1A",fontSize:15}}>{admin?"Membership benefits":"Your membership benefits"}</div>
+        <span style={{background:G.goldPale,color:G.goldDk,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20}}>{PKG_NAME[ben.package]}</span>
+      </div>
+      {row(maintTitle,maintMain,maintSub)}
+      {row("Extra complimentary services",cp.remaining+" of "+cp.allowed+" left","Membership year "+fmtDay(cp.window_start)+" – "+fmtDay(cp.window_end)+". Unused services expire at the end of the membership year.")}
+      {row("Aftercare products",ben.aftercare?"Included":"Not included",ben.aftercare?"Complimentary Aftercare Products Provided":"Complimentary aftercare products are included with Signature and Elite.")}
+      {admin&&ben.aftercare&&(
+        <div style={{display:"flex",gap:8,marginTop:6,flexWrap:"wrap"}}>
+          <input placeholder="Record aftercare given (e.g. leave-in conditioner)" value={note} onChange={e=>setNote(e.target.value)} style={{flex:1,minWidth:180,padding:"7px 10px",border:"1px solid "+G.creamDk,borderRadius:6,fontSize:13}}/>
+          <button onClick={async()=>{if(!note.trim()){alert('Describe what was given');return;}
+            const {error}=await supabase.rpc('record_aftercare',{p_membership:membershipId,p_note:note.trim()});
+            if(error){alert('Could not record: '+error.message);return;} setNote("");loadHist();}}
+            style={{background:G.creamLt,border:"1px solid "+G.creamDk,borderRadius:6,padding:"7px 12px",cursor:"pointer",fontSize:12,fontWeight:700,color:G.goldDk}}>Record</button>
+        </div>)}
+      {admin&&hist.length>0&&(
+        <div style={{marginTop:12}}>
+          <div style={{color:G.goldDk,fontSize:10,letterSpacing:2,textTransform:"uppercase",margin:"6px 0"}}>Benefit history</div>
+          {hist.map(h=>(
+            <div key={h.id} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"6px 0",borderTop:"1px solid #F5F3EE",fontSize:12}}>
+              <span style={{color:"#888",width:76,flexShrink:0}}>{new Date(h.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>
+              <span style={{flex:1,color:"#444"}}>{labels[h.kind]}{h.service?" · "+h.service:""}{h.note?" · "+h.note:""}</span>
+            </div>))}
+        </div>)}
+      {admin&&<button onClick={()=>{reload();loadHist();}} style={{marginTop:10,background:"none",border:"none",color:G.goldDk,fontSize:12,cursor:"pointer",padding:0}}>Refresh</button>}
+    </div>
+  );
+}
+// Same member-discounted prices the client sees when booking.
+function addonTotal(names,pkg){const d=PKG_DISC[pkg]||0;return (names||[]).reduce((t,n)=>{const a=ADDONS.find(x=>x.name===n);return t+(a?Math.round(a.price*(1-d/100)):0);},0);}
 function ApproveControls({b,onDone,big=false}){
   const elite=b.pkg==='elite'&&b.credit>0;
-  const [credit,setCredit]=React.useState(elite?String(Math.min(30,b.credit)):"0");
+  // Credit is pre-filled automatically against paid add-ons (up to the balance); the salon can change it before approving.
+  const auto=Math.min(b.credit||0,addonTotal(b.addons,b.pkg));
+  const [credit,setCredit]=React.useState(elite?String(auto):"0");
+  const [useComp,setUseComp]=React.useState(false);
+  const [ben]=useBenefits(b.membershipId);
+  const compLeft=ben&&!ben.error?ben.complimentary.remaining:null;
   const [busy,setBusy]=React.useState(false);
   const pad=big?"7px 14px":"5px 12px";
   return (
     <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-      {elite&&(<label style={{fontSize:11,color:G.goldDk,display:"flex",alignItems:"center",gap:4}}>Credit \u00A3
+      {compLeft!==null&&(<label title="Counts this booking as one of the member's extra complimentary services" style={{fontSize:11,color:compLeft>0?G.goldDk:"#AAA",display:"flex",alignItems:"center",gap:4}}>
+        <input type="checkbox" disabled={compLeft<1} checked={useComp} onChange={e=>setUseComp(e.target.checked)}/>Complimentary ({compLeft} left)</label>)}
+      {elite&&(<label style={{fontSize:11,color:G.goldDk,display:"flex",alignItems:"center",gap:4}}>Credit £
         <input type="number" min="0" max={b.credit} step="1" value={credit} onChange={e=>setCredit(e.target.value)} style={{width:56,padding:"4px 6px",border:"1px solid "+G.creamDk,borderRadius:6,fontSize:12}}/>
         <span style={{color:"#999"}}>of {fmtMoney(b.credit)}</span></label>)}
-      <button disabled={busy} onClick={async()=>{setBusy(true);const r=await adminApproveBooking(b,elite?credit:0);setBusy(false);if(r)onDone({...b,status:'confirmed',creditApplied:Number(r.credit_applied||0),credit:Number(r.balance||0)});}} style={{background:G.okBg,color:G.ok,border:"none",borderRadius:6,padding:pad,cursor:"pointer",fontSize:12,fontWeight:700}}>{busy?"...":"Approve"}</button>
+      <button disabled={busy} onClick={async()=>{setBusy(true);const r=await adminApproveBooking(b,elite?credit:0,useComp);setBusy(false);if(r)onDone({...b,status:'confirmed',creditApplied:Number(r.credit_applied||0),credit:Number(r.balance||0)});}} style={{background:G.okBg,color:G.ok,border:"none",borderRadius:6,padding:pad,cursor:"pointer",fontSize:12,fontWeight:700}}>{busy?"...":"Approve"}</button>
       <button disabled={busy} onClick={async()=>{setBusy(true);const ok=await adminDeclineBooking(b);setBusy(false);if(ok)onDone({...b,status:'cancelled'});}} style={{background:G.errBg,color:G.err,border:"none",borderRadius:6,padding:pad,cursor:"pointer",fontSize:12,fontWeight:700}}>Decline</button>
     </div>
   );
@@ -137,7 +214,7 @@ const PKGS=[
 ];
 
 const SVCMAP={
-  essential:["Priority Appointment","Consultation","Basic Styling","Sustenance Treatment","Olaplex Treatment","K18 Treatment"],
+  essential:["Quarterly Maintenance","Priority Appointment","Consultation","Basic Styling","Sustenance Treatment","Olaplex Treatment","K18 Treatment"],
   signature:["Monthly Maintenance","Wash and Treatment","Sustenance Treatment","Olaplex Treatment","K18 Treatment","Scalp Care","Basic Styling","Braids","Wig Install","Priority Appointment"],
   elite:["Monthly Maintenance","Wash and Treatment","Sustenance Treatment","Olaplex Treatment","K18 Treatment","Scalp Care","Basic Styling","Braids","Wig Install","Premium Styling","Priority Appointment","Consultation","Birthday Glam"],
 };
@@ -286,7 +363,7 @@ const TCSUMMARY=[
 ];
 
 const TCSECTIONS=[
-  {t:"1. Membership Overview",b:"The Healthy Hair Club is a monthly subscription offered by Chris 2 Styles Salon. Three tiers: Essential (39/mo), Signature Care (99/mo), Elite (149/mo). By registering you enter a monthly rolling agreement."},
+  {t:"1. Membership Overview",b:"The Healthy Hair Club is a monthly subscription offered by Chris 2 Styles Salon. Three tiers: Essential (39/mo), Signature (99/mo), Elite (149/mo). By registering you enter a monthly rolling agreement."},
   {t:"2. Payments and Renewal",b:"Your membership renews automatically each month on your billing date unless you cancel. Payment is collected securely via Stripe. Benefits are only active while payment is up to date. Fees are non-refundable once a billing period has commenced."},
   {t:"3. Failed Payments",b:"If your payment fails, your membership moves to Payment Failed and benefits are suspended. You cannot access priority slots, discounts or complimentary appointments. Once payment is processed, benefits restore automatically."},
   {t:"4. Cancellation",b:"You may cancel anytime from your dashboard or by contacting us. Cancellations take effect at the end of your current billing month. No partial refunds for unused days or sessions within a started billing period."},
@@ -769,7 +846,8 @@ function ClientDashboard({onBook,onLogout}) {
           Book My Appointment
         </button>
 
-        {mem.pkg==='elite'&&mem.membershipId&&<div style={{marginTop:14}}><CreditPanel membershipId={mem.membershipId}/></div>}
+        {mem.membershipId&&<div style={{marginTop:14}}><BenefitsPanel membershipId={mem.membershipId}/></div>}
+        {mem.pkg==='elite'&&mem.membershipId&&<div><CreditPanel membershipId={mem.membershipId}/></div>}
 
         {myBkgs.length>0&&(
           <S id="bkgs" icon="📋" title="Upcoming Appointments" sub={myBkgs.length+" scheduled"}>
@@ -815,8 +893,8 @@ function ClientDashboard({onBook,onLogout}) {
         <S id="disc" icon="🏷️" title="Your Member Discounts" sub="See how your membership saves you money">
           <div style={{padding:"16px 20px 20px"}}>
             <div style={{background:G.creamLt,borderRadius:10,padding:16,border:"1px solid "+G.creamDk}}>
-              <div style={{fontWeight:700,color:"#1A1A1A",fontSize:14,marginBottom:4}}>Signature Care — Your Discount</div>
-              <div style={{color:G.goldDk,fontSize:22,fontWeight:700,marginBottom:2}}>15% off</div>
+              <div style={{fontWeight:700,color:"#1A1A1A",fontSize:14,marginBottom:4}}>{PKG_NAME[mem.pkg]} — Your Discount</div>
+              <div style={{color:G.goldDk,fontSize:22,fontWeight:700,marginBottom:2}}>{PKG_DISC[mem.pkg]||10}% off</div>
               <div style={{color:"#666",fontSize:12}}>Applied automatically on selected premium services. No codes needed.</div>
             </div>
           </div>
@@ -1086,6 +1164,7 @@ function MemberDetail({member,onBack,onLogout}) {
         <button onClick={onLogout} style={{marginLeft:"auto",background:G.creamLt,border:"1px solid "+G.creamDk,borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:12,color:"#888"}}>Sign Out</button>
       </div>
       <div style={{maxWidth:760,margin:"0 auto",padding:"24px 16px 80px"}}>
+        {data.membershipId&&<BenefitsPanel admin membershipId={data.membershipId}/>}
         {data.pkg==='elite'&&data.membershipId&&<CreditPanel admin membershipId={data.membershipId}/>}
 
         <div style={{background:"linear-gradient(135deg,"+G.goldDk+","+G.gold+")",borderRadius:16,padding:"24px 24px 22px",marginBottom:14}}>
@@ -1113,7 +1192,7 @@ function MemberDetail({member,onBack,onLogout}) {
           {data.pkg!=="essential"&&(
             <div style={{marginTop:14}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                <span style={{color:"rgba(255,255,255,0.7)",fontSize:11}}>Monthly sessions</span>
+                <span style={{color:"rgba(255,255,255,0.7)",fontSize:11}}>Maintenance this month</span>
                 <span style={{color:"#fff",fontSize:11,fontWeight:700}}>{data.used}/{data.total} used</span>
               </div>
               <div style={{height:5,background:"rgba(255,255,255,0.25)",borderRadius:4}}>

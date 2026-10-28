@@ -21,6 +21,24 @@ export async function POST(req) {
       return NextResponse.json({ error: 'That service is not included in your membership.' }, { status: 403 })
     }
 
+    // Maintenance services are limited (Essential: 1 per 3-month block from the 3rd month; Signature/Elite: 1 per month).
+    // Check before taking the slot so the member gets a clear message; approval re-checks in the database.
+    if (service === 'Monthly Maintenance' || service === 'Quarterly Maintenance') {
+      const { data: s0 } = await supabase.from('slots').select('slot_date').eq('id', slotId).maybeSingle()
+      const { data: mem } = await supabase.from('memberships').select('id')
+        .eq('client_id', client.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      if (s0 && mem) {
+        const { data: ben } = await supabase.rpc('membership_benefits', { p_membership: mem.id, p_on: s0.slot_date })
+        const mt = ben?.maintenance
+        if (mt && !mt.started) {
+          return NextResponse.json({ error: `Your first quarterly maintenance service is available from ${new Date(mt.window_start + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}. Please choose a later date.` }, { status: 409 })
+        }
+        if (mt && mt.remaining < 1) {
+          return NextResponse.json({ error: 'You have already used your maintenance service for this period. Please choose a date in your next period, or contact the salon.' }, { status: 409 })
+        }
+      }
+    }
+
     const addonList = Array.isArray(addons) ? addons.map(String).slice(0, 20) : []
     const { data: bookingId, error } = await supabase.rpc('create_booking', {
       p_client: client.id, p_slot: slotId, p_service: service, p_addons: addonList, p_notes: null,

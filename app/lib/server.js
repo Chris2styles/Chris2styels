@@ -12,7 +12,7 @@ export const ELITE_MONTHLY_CREDIT = 30
 
 // Services each package may book. Keep in sync with SVCMAP in HHCApp.jsx.
 export const SERVICES = {
-  essential: ['Priority Appointment', 'Consultation', 'Basic Styling', 'Sustenance Treatment', 'Olaplex Treatment', 'K18 Treatment'],
+  essential: ['Quarterly Maintenance', 'Priority Appointment', 'Consultation', 'Basic Styling', 'Sustenance Treatment', 'Olaplex Treatment', 'K18 Treatment'],
   signature: ['Monthly Maintenance', 'Wash and Treatment', 'Sustenance Treatment', 'Olaplex Treatment', 'K18 Treatment', 'Scalp Care', 'Basic Styling', 'Braids', 'Wig Install', 'Priority Appointment'],
   elite: ['Monthly Maintenance', 'Wash and Treatment', 'Sustenance Treatment', 'Olaplex Treatment', 'K18 Treatment', 'Scalp Care', 'Basic Styling', 'Braids', 'Wig Install', 'Premium Styling', 'Priority Appointment', 'Consultation', 'Birthday Glam'],
 }
