@@ -1247,6 +1247,7 @@ function ClientBooking({onBack,onDone}) {
   const [svc,setSvc]=useState(null);
   const [slot,setSlot]=useState(null);
   const [realSlots,setRealSlots]=React.useState([]);
+  const [pickDay,setPickDay]=React.useState(null);
   const [myPkg,setMyPkg]=React.useState('essential');
   const [myMemId,setMyMemId]=React.useState(null);
   const [ben]=useBenefits(myMemId);
@@ -1256,7 +1257,7 @@ function ClientBooking({onBack,onDone}) {
   const [submitting,setSubmitting]=React.useState(false);
   React.useEffect(()=>{
     fetch('/api/slots').then(r=>r.json()).then(d=>{
-      setRealSlots((d.slots||[]).map(s=>({id:s.id,date:fmtSlotDate(s.slot_date),time:String(s.slot_time).slice(0,5),avail:!s.booked})));
+      setRealSlots((d.slots||[]).map(s=>({id:s.id,day:String(s.slot_date).slice(0,10),date:fmtSlotDate(s.slot_date),time:String(s.slot_time).slice(0,5),avail:!s.booked})));
     }).catch(e=>console.log('Slots error:',e));
     (async()=>{
       const {data:{user}}=await supabase.auth.getUser(); if(!user)return;
@@ -1386,15 +1387,29 @@ function ClientBooking({onBack,onDone}) {
           <div>
             <h3 style={{fontFamily:SR,color:"#1A1A1A",fontSize:22,fontStyle:"italic",margin:"0 0 6px"}}>Select your time</h3>
             <p style={{color:"#666",fontSize:13,margin:"0 0 24px"}}>Members-only slots reserved exclusively for Healthy Hair Club members.</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:24}}>
-              {displaySlots.map(s=>(
-                <div key={s.id} onClick={()=>s.avail&&setSlot(s.id)} style={{background:!s.avail?"#F5F5F5":slot===s.id?G.goldPale:"#fff",border:"1px solid "+(!s.avail?"#E0E0E0":slot===s.id?G.gold:G.creamDk),borderRadius:3,padding:16,cursor:s.avail?"pointer":"not-allowed",opacity:s.avail?1:0.4,textAlign:"center"}}>
-                  <div style={{fontSize:12,color:slot===s.id?G.goldDk:"#888",marginBottom:4}}>{s.date}</div>
-                  <div style={{fontSize:16,fontWeight:700,fontFamily:DP,color:slot===s.id?G.goldDk:"#1A1A1A"}}>{s.time}</div>
-                  {!s.avail&&<div style={{fontSize:10,color:"#AAA",marginTop:4}}>BOOKED</div>}
+            {/* Pick a day first, then a time on that day (keeps the list short with months of slots). */}
+            {(()=>{const days=[...new Set(displaySlots.filter(x=>x.avail).map(x=>x.day))];
+              const d=pickDay&&days.includes(pickDay)?pickDay:days[0];
+              const fmtChip=k=>{const x=new Date(k+'T00:00:00');return {w:x.toLocaleDateString('en-GB',{weekday:'short'}),n:x.getDate(),m:x.toLocaleDateString('en-GB',{month:'short'})};};
+              if(!days.length)return <div style={{background:G.creamLt,border:"1px solid "+G.creamDk,borderRadius:4,padding:16,color:"#666",fontSize:13,marginBottom:24}}>There are no member appointments available right now. Please check back soon or contact the salon.</div>;
+              return (<>
+                <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:16,WebkitOverflowScrolling:"touch"}}>
+                  {days.map(k=>{const c=fmtChip(k);const on=k===d;return(
+                    <button key={k} onClick={()=>{setPickDay(k);if(!displaySlots.some(x=>x.id===slot&&x.day===k))setSlot(null);}} style={{flex:"0 0 auto",width:64,padding:"10px 0",borderRadius:6,border:"1px solid "+(on?G.gold:G.creamDk),background:on?G.goldPale:"#fff",cursor:"pointer",textAlign:"center"}}>
+                      <div style={{fontSize:11,color:on?G.goldDk:"#888",textTransform:"uppercase"}}>{c.w}</div>
+                      <div style={{fontSize:20,fontWeight:700,fontFamily:DP,color:on?G.goldDk:"#1A1A1A",lineHeight:1.2}}>{c.n}</div>
+                      <div style={{fontSize:11,color:on?G.goldDk:"#888"}}>{c.m}</div>
+                    </button>);})}
                 </div>
-              ))}
-            </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:24}}>
+                  {displaySlots.filter(x=>x.day===d).map(s=>(
+                    <div key={s.id} onClick={()=>s.avail&&setSlot(s.id)} style={{background:!s.avail?"#F5F5F5":slot===s.id?G.goldPale:"#fff",border:"1px solid "+(!s.avail?"#E0E0E0":slot===s.id?G.gold:G.creamDk),borderRadius:3,padding:14,cursor:s.avail?"pointer":"not-allowed",opacity:s.avail?1:0.4,textAlign:"center"}}>
+                      <div style={{fontSize:16,fontWeight:700,fontFamily:DP,color:slot===s.id?G.goldDk:"#1A1A1A"}}>{s.time}</div>
+                      {!s.avail&&<div style={{fontSize:10,color:"#AAA",marginTop:4}}>BOOKED</div>}
+                    </div>
+                  ))}
+                </div>
+              </>);})()}
             <div style={{display:"flex",gap:10}}>
               <Btn ghost onClick={()=>setStep(2)}>Back</Btn>
               <div style={{flex:1}}><Btn full disabled={!slot} onClick={()=>setStep(4)}>Review Booking</Btn></div>
@@ -1898,6 +1913,9 @@ function AdminDashboard({onLogout}) {
   const [inbox,setInbox]=useState([]);
   const [replyT,setReplyT]=useState({});
   const [slots,setSlots]=useState([]);
+  // Availability list shows two weeks at a time.
+  const [slotFrom,setSlotFrom]=useState(new Date().toISOString().slice(0,10));
+  const slotTo=(()=>{const x=new Date(slotFrom+'T00:00:00');x.setDate(x.getDate()+14);return x.toISOString().slice(0,10);})();
   const [nSlot,setNSlot]=useState({date:"",time:"",dur:60,vip:true,sId:"s1"});
   const stylists=[{id:"s1",name:"Christine",color:G.gold},{id:"s2",name:"Stylist 2",color:"#7EC8C8"}];
   const [selSt,setSelSt]=useState("all");
@@ -2178,14 +2196,22 @@ function AdminDashboard({onLogout}) {
                 return <button key={id} onClick={()=>setSelSt(id)} style={{padding:"6px 14px",borderRadius:20,border:"1px solid "+(selSt===id?(st?st.color:G.gold):"#DDD"),background:selSt===id?G.creamLt:"#fff",color:selSt===id?(st?st.color:G.goldDk):"#888",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:BD}}>{id==="all"?"All Stylists":(st?st.name:id)}</button>;
               })}
             </div>
+            {(()=>{const f=new Date(slotFrom+'T00:00:00'),t=new Date(f);t.setDate(t.getDate()+13);
+              const lab=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+              const move=n=>{const x=new Date(slotFrom+'T00:00:00');x.setDate(x.getDate()+n);setSlotFrom(x.toISOString().slice(0,10));};
+              return <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:12}}>
+                <button onClick={()=>move(-14)} style={{background:"#fff",border:"1px solid "+G.creamDk,borderRadius:6,padding:"7px 12px",cursor:"pointer",fontSize:12,color:G.goldDk,fontWeight:700}}>{"\u2190"} Earlier</button>
+                <span style={{fontSize:13,color:"#555",fontWeight:700}}>{lab(f)} {"\u2013"} {lab(t)}</span>
+                <button onClick={()=>move(14)} style={{background:"#fff",border:"1px solid "+G.creamDk,borderRadius:6,padding:"7px 12px",cursor:"pointer",fontSize:12,color:G.goldDk,fontWeight:700}}>Later {"\u2192"}</button>
+              </div>;})()}
             <div style={{background:"#fff",borderRadius:14,overflow:"hidden",border:"1px solid "+G.creamDk}}>
-              {slots.filter(s=>selSt==="all"||s.sId===selSt).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)).map((slot,i,arr)=>{
+              {slots.filter(s=>(selSt==="all"||s.sId===selSt)&&s.date>=slotFrom&&s.date<slotTo).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)).map((slot,i,arr)=>{
                 const st=stylists.find(s=>s.id===slot.sId);
                 const tot=Number(slot.time.split(":")[0])*60+Number(slot.time.split(":")[1])+slot.dur;
                 const et=String(Math.floor(tot/60)).padStart(2,"0")+":"+String(tot%60).padStart(2,"0");
                 return (
                   <div key={slot.id} style={{display:"flex",gap:16,padding:"13px 18px",borderBottom:i<arr.length-1?"1px solid #F5F3EE":"none",alignItems:"center",background:slot.booked?G.creamLt:"#fff"}}>
-                    <span style={{color:"#888",fontSize:12,width:70,flexShrink:0}}>{slot.date.slice(5).replace("-","/")}</span>
+                    <span style={{color:"#888",fontSize:12,width:80,flexShrink:0}}>{new Date(slot.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</span>
                     <span style={{fontWeight:700,color:"#1A1A1A",fontSize:13,width:55,flexShrink:0}}>{slot.time}</span>
                     <span style={{color:"#888",fontSize:12,width:110,flexShrink:0}}>{slot.dur}min → {et}</span>
                     <div style={{display:"flex",alignItems:"center",gap:6,width:90,flexShrink:0}}>
