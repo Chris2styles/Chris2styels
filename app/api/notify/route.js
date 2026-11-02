@@ -36,7 +36,7 @@ function esc(v) {
 // Emails anyone signed in may trigger (they only ever go to the salon).
 const MEMBER_TYPES = ['message_received', 'credit_gifted']
 // Emails that go to clients: only the server itself or a signed-in admin may trigger them.
-const PROTECTED_TYPES = ['booking_submitted', 'booking_confirmed', 'booking_declined', 'message_replied', 'payment_failed', 'payment_restored']
+const PROTECTED_TYPES = ['package_change_requested', 'booking_submitted', 'booking_confirmed', 'booking_declined', 'message_replied', 'payment_failed', 'payment_restored']
 
 export async function POST(req) {
   try {
@@ -76,6 +76,15 @@ export async function POST(req) {
     if (type === 'message_received') {
       await send(ADMIN, 'New Message — Healthy Hair Club',
         emailWrap(`<h2>New Message from ${data.clientName}</h2><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p>${data.message}</p></div>${btn('Reply in Admin', URL+'/admin')}`)
+      )
+    }
+
+    if (type === 'package_change_requested') {
+      await send(ADMIN, 'Package Change — ' + data.clientName,
+        emailWrap(`<h2>A member has changed their package</h2><p><strong>Client:</strong> ${data.clientName}</p><p><strong>From:</strong> ${data.from}</p><p><strong>To:</strong> ${data.to}</p><p><strong>Takes effect:</strong> ${data.date} (their next payment date)</p><p>Nothing for you to do: Stripe and the app switch it automatically.</p>${btn('View in Admin', URL+'/admin')}`)
+      )
+      if (data.clientEmail) await send(data.clientEmail, 'Your Package Change — Healthy Hair Club',
+        emailWrap(`<h2>Your package change is booked in</h2><p>Hi ${data.clientName},</p><p>You're moving from <strong>${data.from}</strong> to <strong>${data.to}</strong>. The change takes effect on <strong>${data.date}</strong>, your next payment date, when the new monthly price is taken. Until then you keep your current benefits.</p><p>Changed your mind? You can cancel the change from your dashboard before that date.</p>${btn('View My Dashboard', URL)}`)
       )
     }
 

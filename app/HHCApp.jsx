@@ -506,7 +506,7 @@ const TCSECTIONS=[
   {t:"5. Aftercare Products (Signature and Elite)",b:"Complimentary aftercare products are provided to Signature and Elite members. How often products are topped up is decided by your stylist, based on how long each product lasts with normal use. Your stylist will tell you when your next top-up is due, and the date is shown on your dashboard. Products and brands may vary."},
   {t:"6. Elite Styling Credit",b:"Elite members receive \u00A330 of styling credit after each successful monthly payment, which can be put toward premium services and paid add-ons. Credit is applied by the salon when your booking is approved. Unused credit expires at the end of each membership month, when the next month's credit is added, and has no cash value."},
   {t:"7. Gifting Elite Credit",b:"Elite members may gift some or all of their current credit to anyone they choose, including family, friends or someone new to the salon, using their dashboard. Gifted credit must be used by the end of the Elite member's current membership month, after which it expires. Gifted credit has no cash value, cannot be exchanged and is used by the salon when the person attends. Once given, credit can only be returned if the salon cancels the gift before it is used or expires."},
-  {t:"8. Changing Your Package",b:"You may upgrade or downgrade your package by contacting the salon. Changes take effect from your next payment date; until then you keep your current package and its benefits. Your membership year does not change when you change package."},
+  {t:"8. Changing Your Package",b:"You may upgrade or downgrade your package at any time from your dashboard or by contacting the salon. Changes take effect from your next payment date, when the new monthly price is charged, and can be cancelled before that date; until then you keep your current package and its benefits. Your membership year does not change when you change package."},
   {t:"9. Payments and Renewal",b:"When you join you can choose your monthly payment date (any day from the 1st to the 28th). If you choose a later date, nothing is taken when you sign up; your first payment is taken on your chosen date and your membership, including your membership year and benefits, starts on that date. You can book once your first payment has gone through. Your membership renews automatically each month on your billing date unless you cancel. Payment is collected securely via Stripe. Benefits are only active while payment is up to date. Fees are non-refundable once a billing period has commenced."},
   {t:"10. Failed Payments",b:"If your payment fails, your membership moves to Payment Failed and benefits are suspended. You cannot access priority slots, discounts, credit or complimentary services. Once payment is processed, benefits restore automatically."},
   {t:"11. Cancellation",b:"You may cancel anytime from your dashboard or by contacting us. Cancellations take effect at the end of your current billing month. No partial refunds are given for unused days, services, add-ons or credit within a started billing period."},
@@ -849,6 +849,62 @@ function ClientPackages({onSelect,onBack}) {
   );
 }
 
+// Member changes their own package. Takes effect on their next payment date (handled by Stripe + webhook).
+function ChangePackage({mem,onChanged}){
+  const [open,setOpen]=React.useState(false);
+  const [pick,setPick]=React.useState(null);
+  const [busy,setBusy]=React.useState(false);
+  const [msg,setMsg]=React.useState("");
+  const cur=mem.pkg, pend=mem.pendingPackage;
+  async function submit(pkg){
+    setBusy(true);setMsg("");
+    try{
+      const res=await authFetch('/api/change-package',{method:'POST',body:JSON.stringify({package:pkg})});
+      const out=await res.json().catch(()=>({}));
+      if(!res.ok){setMsg(out.error||"Something went wrong. Please try again.");setBusy(false);return;}
+      setMsg(out.cancelled?"Your package change has been cancelled. You'll stay on "+PKG_NAME[cur]+".":"Done! You'll move to "+PKG_NAME[pkg]+" on "+fmtDay(out.from)+", your next payment date. Until then you keep your current benefits.");
+      setOpen(false);setPick(null);onChanged&&onChanged(out.cancelled?null:pkg,out.from||null);
+    }catch(e){setMsg("Please check your connection and try again.");}
+    setBusy(false);
+  }
+  const box={background:"#FFF",borderRadius:14,border:"1px solid "+G.creamDk,padding:"18px 20px",marginBottom:14};
+  return (
+    <div style={box}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+        <div>
+          <div style={{fontWeight:700,color:"#1A1A1A",fontSize:15}}>Change my package</div>
+          <div style={{color:"#888",fontSize:12,marginTop:2}}>Upgrade or downgrade any time. The change starts on your next payment date.</div>
+        </div>
+        {!open&&<button onClick={()=>{setOpen(true);setMsg("");}} style={{background:G.goldPale,border:"1px solid "+G.gold,color:G.goldDk,borderRadius:6,padding:"7px 12px",cursor:"pointer",fontSize:12,fontWeight:700,whiteSpace:"nowrap"}}>Change</button>}
+      </div>
+      {pend&&!open&&(
+        <div style={{marginTop:12,background:G.goldPale,borderRadius:8,padding:"10px 12px",fontSize:13,color:"#5A4A10",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          <span>Changing to <strong>{PKG_NAME[pend]}</strong>{mem.pendingFrom?" on "+fmtDay(mem.pendingFrom):" at your next payment date"}.</span>
+          <button disabled={busy} onClick={()=>submit(cur)} style={{background:"#fff",border:"1px solid "+G.creamDk,borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:12,color:"#888"}}>{busy?"...":"Cancel change"}</button>
+        </div>
+      )}
+      {open&&(
+        <div style={{marginTop:12}}>
+          {PKGS.filter(p=>p.id!==cur).map(p=>(
+            <div key={p.id} onClick={()=>setPick(p.id)} style={{border:"1px solid "+(pick===p.id?G.gold:G.creamDk),background:pick===p.id?G.creamLt:"#fff",borderRadius:8,padding:"12px 14px",marginBottom:8,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontWeight:700,color:"#1A1A1A",fontSize:14}}>{PKG_NAME[p.id]} <span style={{color:"#999",fontWeight:400,fontSize:12}}>{p.price>PKGS.find(x=>x.id===cur).price?"Upgrade":"Downgrade"}</span></div>
+                <div style={{color:"#888",fontSize:12,marginTop:2}}>{p.tagline}</div>
+              </div>
+              <div style={{color:G.goldDk,fontWeight:700,fontSize:15,whiteSpace:"nowrap",marginLeft:10}}>{"£"}{p.price}/mo</div>
+            </div>
+          ))}
+          {pick&&<div style={{color:"#666",fontSize:12,margin:"4px 0 10px",lineHeight:1.6}}>You'll keep {PKG_NAME[cur]} until your next payment date. On that date {PKG_NAME[pick]} starts and {"£"}{PKGS.find(p=>p.id===pick).price} is taken, then monthly after that.</div>}
+          <div style={{display:"flex",gap:8}}>
+            <button disabled={!pick||busy} onClick={()=>submit(pick)} style={{flex:1,background:pick?"linear-gradient(135deg,"+G.goldLt+","+G.gold+")":"#EEE",border:"none",borderRadius:6,padding:"10px 0",cursor:pick?"pointer":"default",fontSize:13,fontWeight:700,color:pick?"#1A1A1A":"#AAA"}}>{busy?"Saving...":"Confirm change"}</button>
+            <button onClick={()=>{setOpen(false);setPick(null);}} style={{background:"#fff",border:"1px solid "+G.creamDk,borderRadius:6,padding:"10px 14px",cursor:"pointer",fontSize:13,color:"#888"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {msg&&<div style={{marginTop:10,background:G.creamLt,border:"1px solid "+G.creamDk,borderRadius:6,padding:"10px 12px",fontSize:12,color:"#5A4A2A",lineHeight:1.6}}>{msg}</div>}
+    </div>
+  );
+}
 function ClientDashboard({onBook,onLogout}) {
   const [mem,setMem]=React.useState({name:"Loading...",pkg:"essential",next:"",used:0,total:0,membershipId:null,status:"active"});
 
@@ -871,6 +927,8 @@ function ClientDashboard({onBook,onLogout}) {
           membershipId:membership?.id||null,
           status:membership?.status||'active',
           startsOn:membership?.starts_on||null,
+          pendingPackage:membership?.pending_package||null,
+          pendingFrom:membership?.pending_package_from||null,
         });
       }catch(e){setMem(p=>({...p,name:"Error loading - please refresh"}));}
     }
@@ -1017,6 +1075,7 @@ function ClientDashboard({onBook,onLogout}) {
 
         {mem.membershipId&&mem.status!=='pending'&&<div style={{marginTop:14}}><BenefitsPanel membershipId={mem.membershipId}/></div>}
         {mem.pkg==='elite'&&mem.membershipId&&<div><CreditPanel membershipId={mem.membershipId}/></div>}
+        {mem.membershipId&&['active','pending'].includes(mem.status)&&<ChangePackage mem={mem} onChanged={(pkg,from)=>setMem(p=>({...p,pendingPackage:pkg,pendingFrom:from}))}/>}
 
         {myBkgs.length>0&&(
           <S id="bkgs" icon="📋" title="Upcoming Appointments" sub={myBkgs.length+" scheduled"}>
@@ -1355,6 +1414,7 @@ function MemberDetail({member,onBack,onLogout}) {
         <button onClick={onLogout} style={{marginLeft:"auto",background:G.creamLt,border:"1px solid "+G.creamDk,borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:12,color:"#888"}}>Sign Out</button>
       </div>
       <div style={{maxWidth:760,margin:"0 auto",padding:"24px 16px 80px"}}>
+        {data.pendingPackage&&<div style={{background:G.goldPale,border:"1px solid "+G.gold,borderRadius:12,padding:"12px 16px",marginBottom:14,fontSize:13,color:"#5A4A10"}}>Package change booked: moving to <strong>{PKG_NAME[data.pendingPackage]}</strong>{data.pendingFrom?" on "+fmtDay(data.pendingFrom):" at their next payment date"}. This happens automatically.</div>}
         {data.membershipId&&<BenefitsPanel admin membershipId={data.membershipId}/>}
         {data.pkg==='elite'&&data.membershipId&&<CreditPanel admin membershipId={data.membershipId}/>}
 
@@ -1736,6 +1796,8 @@ function AdminDashboard({onLogout}) {
               used:mem.sessions_used||0,
               total:mem.sessions_total||0,
               membershipId:mem.id||null,
+              pendingPackage:mem.pending_package||null,
+              pendingFrom:mem.pending_package_from||null,
               credit:Number(mem.style_credit||0),
               notes:'',
               visits:[],
