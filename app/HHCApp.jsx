@@ -11,7 +11,10 @@ async function authFetch(url,opts={}){
 }
 const PKG_DISC={essential:10,signature:15,elite:20};
 const PKG_NAME={essential:"Essential",signature:"Signature",elite:"Elite"};
-const STATUS_LABEL={active:"Active",payment_failed:"Payment issue",cancelled:"Cancelled",paused:"Paused"};
+const STATUS_LABEL={active:"Active",payment_failed:"Payment issue",cancelled:"Cancelled",paused:"Paused",pending:"Starting soon"};
+// Next date (from today) that falls on the chosen day of the month (1-28). Same day = today.
+function nextPayDate(day){const t=new Date();const d=new Date(t.getFullYear(),t.getMonth(),day);if(day<t.getDate())d.setMonth(d.getMonth()+1);return d;}
+function ordinal(n){const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
 function fmtSlotDate(d){if(!d)return '';const x=new Date(String(d).slice(0,10)+'T00:00:00');return x.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}
 function fmtMoney(n){return '\u00A3'+Number(n||0).toFixed(2);}
 function latestMembership(list,clientId){return (list||[]).filter(m=>m.client_id===clientId).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0]||null;}
@@ -504,7 +507,7 @@ const TCSECTIONS=[
   {t:"6. Elite Styling Credit",b:"Elite members receive \u00A330 of styling credit after each successful monthly payment, which can be put toward premium services and paid add-ons. Credit is applied by the salon when your booking is approved. Unused credit expires at the end of each membership month, when the next month's credit is added, and has no cash value."},
   {t:"7. Gifting Elite Credit",b:"Elite members may gift some or all of their current credit to anyone they choose, including family, friends or someone new to the salon, using their dashboard. Gifted credit must be used by the end of the Elite member's current membership month, after which it expires. Gifted credit has no cash value, cannot be exchanged and is used by the salon when the person attends. Once given, credit can only be returned if the salon cancels the gift before it is used or expires."},
   {t:"8. Changing Your Package",b:"You may upgrade or downgrade your package by contacting the salon. Changes take effect from your next payment date; until then you keep your current package and its benefits. Your membership year does not change when you change package."},
-  {t:"9. Payments and Renewal",b:"Your membership renews automatically each month on your billing date unless you cancel. Payment is collected securely via Stripe. Benefits are only active while payment is up to date. Fees are non-refundable once a billing period has commenced."},
+  {t:"9. Payments and Renewal",b:"When you join you can choose your monthly payment date (any day from the 1st to the 28th). If you choose a later date, nothing is taken when you sign up; your first payment is taken on your chosen date and your membership, including your membership year and benefits, starts on that date. You can book once your first payment has gone through. Your membership renews automatically each month on your billing date unless you cancel. Payment is collected securely via Stripe. Benefits are only active while payment is up to date. Fees are non-refundable once a billing period has commenced."},
   {t:"10. Failed Payments",b:"If your payment fails, your membership moves to Payment Failed and benefits are suspended. You cannot access priority slots, discounts, credit or complimentary services. Once payment is processed, benefits restore automatically."},
   {t:"11. Cancellation",b:"You may cancel anytime from your dashboard or by contacting us. Cancellations take effect at the end of your current billing month. No partial refunds are given for unused days, services, add-ons or credit within a started billing period."},
   {t:"12. Missed Appointments",b:"Please provide at least 48 hours notice to cancel or reschedule. A minimum of 24 hours notice is required. Late cancellations or no-shows may result in loss of that period's maintenance service or complimentary add-on, or a temporary restriction on booking privileges."},
@@ -518,6 +521,7 @@ const TCSECTIONS=[
 const SMAP={
   active:{label:"Active",bg:"#E8F5E9",color:"#2E7D32"},
   payment_failed:{label:"Payment Failed",bg:"#FFEBEE",color:"#B71C1C"},
+  pending:{label:"Starts Soon",bg:"#FFF8E1",color:"#8A6D00"},
   paused:{label:"Paused",bg:"#FFF3E0",color:"#E65100"},
   confirmed:{label:"Confirmed",bg:"#E8F5E9",color:"#2E7D32"},
   pending:{label:"Pending",bg:"#FFF3E0",color:"#E65100"},
@@ -747,6 +751,7 @@ function ClientPackages({onSelect}) {
   const [showForm,setShowForm]=useState(false);
   const [name,setName]=useState('');
   const [email,setEmail]=useState('');
+  const [payDay,setPayDay]=useState('');
   if(showT) return <Terms onBack={()=>setShowT(false)}/>;
   return (
     <div style={{minHeight:"100vh",background:G.black,fontFamily:BD}}>
@@ -813,7 +818,20 @@ function ClientPackages({onSelect}) {
                   <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" type="email"
                     style={{width:"100%",padding:"12px 14px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:4,color:G.white,fontSize:14,fontFamily:BD,outline:"none",boxSizing:"border-box"}}/>
                 </div>
-                <Btn full disabled={!name||!email} onClick={()=>onSelect(sel,email,name)}>Pay Now with Stripe</Btn>
+                <div style={{marginBottom:20}}>
+                  <div style={{color:G.silver,fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Monthly Payment Date</div>
+                  <select value={payDay} onChange={e=>setPayDay(e.target.value)}
+                    style={{width:"100%",padding:"12px 14px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:4,color:G.white,fontSize:14,fontFamily:BD,outline:"none",boxSizing:"border-box"}}>
+                    <option value="">Today: start my membership now</option>
+                    {Array.from({length:28},(_,i)=>i+1).map(d=><option key={d} value={d}>The {ordinal(d)} of each month</option>)}
+                  </select>
+                  <div style={{color:G.silver,fontSize:12,marginTop:8,lineHeight:1.6}}>
+                    {payDay&&Number(payDay)!==new Date().getDate()
+                      ?"Nothing is taken today. Your first payment and your membership start on "+nextPayDate(Number(payDay)).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+", then the same date each month. You can book from that date."
+                      :"Your first payment is taken today and your membership starts straight away."}
+                  </div>
+                </div>
+                <Btn full disabled={!name||!email} onClick={()=>onSelect(sel,email,name,payDay)}>{payDay&&Number(payDay)!==new Date().getDate()?"Continue to Stripe":"Pay Now with Stripe"}</Btn>
               </div>
             )}
             <p style={{color:G.dim,fontSize:11,marginTop:12}}>
@@ -847,6 +865,7 @@ function ClientDashboard({onBook,onLogout}) {
           total:membership?.sessions_total||0,
           membershipId:membership?.id||null,
           status:membership?.status||'active',
+          startsOn:membership?.starts_on||null,
         });
       }catch(e){setMem(p=>({...p,name:"Error loading - please refresh"}));}
     }
@@ -982,11 +1001,16 @@ function ClientDashboard({onBook,onLogout}) {
           )}
         </div>
 
-        <button onClick={onBook} style={{width:"100%",padding:"17px 0",background:"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",color:"#1A1A1A",border:"none",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:DP,letterSpacing:1.5,textTransform:"uppercase",cursor:"pointer",marginBottom:14}}>
+        {mem.status==='pending'&&(
+          <div style={{background:"#FFF8E1",border:"1px solid #F2DFA0",borderRadius:14,padding:"18px 20px",marginBottom:14}}>
+            <div style={{fontWeight:700,color:"#5A4A10",fontSize:15,marginBottom:6}}>{mem.startsOn?"Your membership starts on "+fmtDay(mem.startsOn):"Your membership is starting soon"}</div>
+            <p style={{color:"#6B5A1E",fontSize:13,margin:0,lineHeight:1.7}}>Your first payment will be taken on your chosen payment date. Once it goes through, your membership is active and you can book. Your benefits count from that date.</p>
+          </div>)}
+        {mem.status!=='pending'&&<button onClick={onBook} style={{width:"100%",padding:"17px 0",background:"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",color:"#1A1A1A",border:"none",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:DP,letterSpacing:1.5,textTransform:"uppercase",cursor:"pointer",marginBottom:14}}>
           Book My Appointment
-        </button>
+        </button>}
 
-        {mem.membershipId&&<div style={{marginTop:14}}><BenefitsPanel membershipId={mem.membershipId}/></div>}
+        {mem.membershipId&&mem.status!=='pending'&&<div style={{marginTop:14}}><BenefitsPanel membershipId={mem.membershipId}/></div>}
         {mem.pkg==='elite'&&mem.membershipId&&<div><CreditPanel membershipId={mem.membershipId}/></div>}
 
         {myBkgs.length>0&&(
@@ -2074,12 +2098,12 @@ export default function App({startAdmin=false}) {
 
   if(view==="client"){
     if(cScr==="login") return <ClientLogin onLogin={()=>setCS("dashboard")}/>;
-    if(cScr==="packages") return <ClientPackages onSelect={async(pkg,email,name)=>{
+    if(cScr==="packages") return <ClientPackages onSelect={async(pkg,email,name,payDay)=>{
       try {
         const res = await fetch('/api/create-checkout', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({package:pkg, email:email, name:name})
+          body:JSON.stringify({package:pkg, email:email, name:name, payDay:payDay||null})
         });
         const data = await res.json();
         if(data.url) { window.location.href = data.url; }

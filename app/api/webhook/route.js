@@ -51,7 +51,7 @@ async function handleCheckoutCompleted(session) {
   const existing = await membershipForSub(session.subscription)
   if (existing) return
 
-  const { name, package: pkgRaw } = session.metadata || {}
+  const { name, package: pkgRaw, start_on: startOn } = session.metadata || {}
   const pkg = ['essential', 'signature', 'elite'].includes(pkgRaw) ? pkgRaw : 'essential'
   const email = (session.customer_email || session.customer_details?.email || '').toLowerCase()
   if (!email) throw new Error('checkout session has no email')
@@ -66,7 +66,9 @@ async function handleCheckoutCompleted(session) {
   const { error } = await supabase.from('memberships').insert({
     client_id: client.id,
     package: pkg,
-    status: 'active',
+    // A member who chose a later payment date is 'pending' until that first payment goes through.
+    status: startOn ? 'pending' : 'active',
+    starts_on: startOn || new Date().toISOString().slice(0, 10),
     stripe_customer_id: session.customer,
     stripe_sub_id: session.subscription,
     sessions_used: 0,
@@ -84,7 +86,8 @@ async function handleInvoicePaid(req, invoice) {
   // invoice.paid can arrive before checkout.session.completed; ask Stripe to retry shortly.
   if (!m) throw new RetryLater('membership not created yet for ' + subId)
 
-  await supabase.from('payments').upsert({
+  // A £0 sign-up invoice (member chose a later payment date) isn't a payment to record.
+  if ((invoice.amount_paid || 0) > 0) await supabase.from('payments').upsert({
     client_id: m.client_id,
     membership_id: m.id,
     stripe_payment_id: invoice.id,
@@ -97,8 +100,12 @@ async function handleInvoicePaid(req, invoice) {
   if (!qualifying) return
 
   const wasFailed = m.status === 'payment_failed'
+  // First real payment for a member who chose a later payment date: the membership officially starts today,
+  // so the membership year and benefit periods count from now.
+  const starting = m.status === 'pending'
   const { error } = await supabase.from('memberships').update({
     status: 'active',
+    ...(starting ? { created_at: new Date().toISOString(), starts_on: new Date().toISOString().slice(0, 10) } : {}),
     sessions_used: 0,
     sessions_total: SESSIONS[m.package] ?? 0,
     ...periodOf(invoice),

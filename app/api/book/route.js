@@ -14,6 +14,9 @@ export async function POST(req) {
 
     const { data: membership } = await supabase.from('memberships').select('package, status')
       .eq('client_id', client.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (membership?.status === 'pending') {
+      return NextResponse.json({ error: 'Your membership starts on your first payment date. You will be able to book once your first payment has gone through.' }, { status: 403 })
+    }
     if (!membership || membership.status !== 'active') {
       return NextResponse.json({ error: 'Your membership is not active, so booking is paused. Please update your payment details or contact the salon.' }, { status: 403 })
     }
