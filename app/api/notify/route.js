@@ -36,7 +36,7 @@ function esc(v) {
 // Emails anyone signed in may trigger (they only ever go to the salon).
 const MEMBER_TYPES = ['message_received', 'credit_gifted']
 // Emails that go to clients: only the server itself or a signed-in admin may trigger them.
-const PROTECTED_TYPES = ['package_change_requested', 'booking_submitted', 'booking_confirmed', 'booking_declined', 'message_replied', 'payment_failed', 'payment_restored']
+const PROTECTED_TYPES = ['membership_paused', 'membership_resumed', 'membership_cancelled', 'package_change_requested', 'booking_submitted', 'booking_confirmed', 'booking_declined', 'message_replied', 'payment_failed', 'payment_restored']
 
 export async function POST(req) {
   try {
@@ -77,6 +77,25 @@ export async function POST(req) {
       await send(ADMIN, 'New Message — Healthy Hair Club',
         emailWrap(`<h2>New Message from ${data.clientName}</h2><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p>${data.message}</p></div>${btn('Reply in Admin', URL+'/admin')}`)
       )
+    }
+
+    if (type === 'membership_paused') {
+      await send(ADMIN, 'Membership Paused — ' + data.clientName,
+        emailWrap(`<h2>A member has paused their membership</h2><p><strong>Client:</strong> ${data.clientName}</p><p><strong>Paused:</strong> ${data.months} month(s), from ${data.from}</p><p><strong>Payments restart:</strong> ${data.until}</p><p>Nothing for you to do: Stripe and the app handle it automatically.</p>${btn('View in Admin', URL+'/admin')}`))
+      if (data.clientEmail) await send(data.clientEmail, 'Your Membership Pause — Healthy Hair Club',
+        emailWrap(`<h2>Your pause is booked</h2><p>Hi ${data.clientName},</p><p>Your membership will pause from <strong>${data.from}</strong> (your next payment date). No payments will be taken and booking is unavailable while paused.</p><p>Your membership restarts automatically on <strong>${data.until}</strong>, when your monthly payment will be taken again. If you'd rather not continue, please cancel from your dashboard before then.</p><p>Want to come back sooner? You can end your pause early from your dashboard.</p>${btn('View My Dashboard', URL)}`))
+    }
+
+    if (type === 'membership_resumed') {
+      await send(ADMIN, 'Membership Resumed Early — ' + data.clientName,
+        emailWrap(`<p><strong>${data.clientName}</strong> has ended their pause early. Their payment restarts today and they can book again.</p>${btn('View in Admin', URL+'/admin')}`))
+    }
+
+    if (type === 'membership_cancelled') {
+      await send(ADMIN, 'Membership Cancelled — ' + data.clientName,
+        emailWrap(`<h2>A member has cancelled</h2><p><strong>Client:</strong> ${data.clientName}</p><p><strong>Membership ends:</strong> ${data.until} (end of the month they've paid for). No further payments will be taken.</p>${btn('View in Admin', URL+'/admin')}`))
+      if (data.clientEmail) await send(data.clientEmail, 'Your Membership Cancellation — Healthy Hair Club',
+        emailWrap(`<h2>We're sorry to see you go</h2><p>Hi ${data.clientName},</p><p>Your Healthy Hair Club membership is cancelled and will end on <strong>${data.until}</strong>. You can keep using your benefits until then, and no further payments will be taken.</p><p>Changed your mind? You can keep your membership from your dashboard before that date.</p>${btn('View My Dashboard', URL)}`))
     }
 
     if (type === 'package_change_requested') {

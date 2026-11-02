@@ -96,7 +96,8 @@ async function handleInvoicePaid(req, invoice) {
     status: 'paid',
   }, { onConflict: 'stripe_payment_id' })
 
-  const qualifying = (invoice.amount_paid || 0) > 0 && ['subscription_create', 'subscription_cycle'].includes(invoice.billing_reason)
+  // subscription_update = a member ending a pause early (payment restarts that day).
+  const qualifying = (invoice.amount_paid || 0) > 0 && ['subscription_create', 'subscription_cycle', 'subscription_update'].includes(invoice.billing_reason)
   if (!qualifying) return
 
   const wasFailed = m.status === 'payment_failed'
@@ -117,6 +118,9 @@ async function handleInvoicePaid(req, invoice) {
     const { error: cErr } = await supabase.rpc('issue_elite_credit', { p_membership: m.id, p_invoice: invoice.id, p_amount: ELITE_MONTHLY_CREDIT })
     if (cErr) throw cErr
   }
+
+  // Any pause that has now finished is marked as ended.
+  await supabase.from('membership_pauses').update({ status: 'ended' }).eq('membership_id', m.id).in('status', ['scheduled', 'active']).lte('ends_on', new Date().toISOString().slice(0, 10))
 
   if (wasFailed && m.clients?.email) {
     await notify(req, 'payment_restored', { clientEmail: m.clients.email, clientName: m.clients.full_name })

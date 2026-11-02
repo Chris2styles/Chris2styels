@@ -20,6 +20,16 @@ export async function POST(req) {
     if (!membership || membership.status !== 'active') {
       return NextResponse.json({ error: 'Your membership is not active, so booking is paused. Please update your payment details or contact the salon.' }, { status: 403 })
     }
+    // No booking while paused (checked for both today and the appointment date).
+    const { data: mid } = await supabase.from('memberships').select('id')
+      .eq('client_id', client.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    const { data: slotRow } = await supabase.from('slots').select('slot_date').eq('id', slotId).maybeSingle()
+    for (const day of [undefined, slotRow?.slot_date]) {
+      const { data: pb } = mid ? await supabase.rpc('membership_benefits', { p_membership: mid.id, ...(day ? { p_on: day } : {}) }) : { data: null }
+      if (pb?.paused_now) {
+        return NextResponse.json({ error: `Your membership is paused${pb.pause?.ends_on ? ' until ' + new Date(pb.pause.ends_on + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : ''}, so booking isn't available${day ? ' on that date' : ''}. You can end your pause early from your dashboard.` }, { status: 403 })
+      }
+    }
     if (!(SERVICES[membership.package] || []).includes(service)) {
       return NextResponse.json({ error: 'That service is not included in your membership.' }, { status: 403 })
     }

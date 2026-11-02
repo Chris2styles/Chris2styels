@@ -30,6 +30,9 @@ export async function POST(req) {
     const { data: m } = await supabase.from('memberships').select('*')
       .eq('client_id', client.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (!m || !m.stripe_sub_id) return NextResponse.json({ error: 'We could not find your membership.' }, { status: 404 })
+    if (m.cancel_at) return NextResponse.json({ error: 'Your membership is set to cancel. Keep your membership first to change package.' }, { status: 409 })
+    const { data: ben } = await supabase.rpc('membership_benefits', { p_membership: m.id })
+    if (ben?.pause) return NextResponse.json({ error: 'You have a pause booked. Please end or cancel your pause before changing package.' }, { status: 409 })
     if (!['active', 'pending'].includes(m.status)) {
       return NextResponse.json({ error: 'Your membership needs to be active to change package. Please contact the salon.' }, { status: 403 })
     }

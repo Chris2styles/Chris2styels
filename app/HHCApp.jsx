@@ -509,13 +509,14 @@ const TCSECTIONS=[
   {t:"8. Changing Your Package",b:"You may upgrade or downgrade your package at any time from your dashboard or by contacting the salon. Changes take effect from your next payment date, when the new monthly price is charged, and can be cancelled before that date; until then you keep your current package and its benefits. Your membership year does not change when you change package."},
   {t:"9. Payments and Renewal",b:"When you join you can choose your monthly payment date (any day from the 1st to the 28th). If you choose a later date, nothing is taken when you sign up; your first payment is taken on your chosen date and your membership, including your membership year and benefits, starts on that date. You can book once your first payment has gone through. Your membership renews automatically each month on your billing date unless you cancel. Payment is collected securely via Stripe. Benefits are only active while payment is up to date. Fees are non-refundable once a billing period has commenced."},
   {t:"10. Failed Payments",b:"If your payment fails, your membership moves to Payment Failed and benefits are suspended. You cannot access priority slots, discounts, credit or complimentary services. Once payment is processed, benefits restore automatically."},
-  {t:"11. Cancellation",b:"You may cancel anytime from your dashboard or by contacting us. Cancellations take effect at the end of your current billing month. No partial refunds are given for unused days, services, add-ons or credit within a started billing period."},
-  {t:"12. Missed Appointments",b:"Please provide at least 48 hours notice to cancel or reschedule. A minimum of 24 hours notice is required. Late cancellations or no-shows may result in loss of that period's maintenance service or complimentary add-on, or a temporary restriction on booking privileges."},
-  {t:"13. Booking Rules",b:"All appointments must be booked in advance and are subject to availability. Priority booking gives members earlier access to available slots. A booking is only confirmed once you receive confirmation from Chris 2 Styles Salon."},
-  {t:"14. Personal Benefits",b:"Membership benefits are personal to you as the named member and cannot be transferred, except for Elite styling credit gifted as described in section 7."},
-  {t:"15. Treatment Disclaimer",b:"Treatments are personalised based on your hair condition at each appointment. Results may vary depending on your hair type, existing condition, consistency and home aftercare. Chris 2 Styles Salon does not guarantee specific results or hair growth outcomes."},
-  {t:"16. Behaviour Policy",b:"Respectful behaviour toward salon staff and other clients is expected at all times. The salon reserves the right to refuse service or terminate memberships where behaviour is inappropriate or abusive."},
-  {t:"17. Governing Law",b:"These Terms and Conditions are governed by the laws of England and Wales. Any disputes shall be subject to the exclusive jurisdiction of the courts of England and Wales."},
+  {t:"11. Pausing Your Membership",b:"You may pause your membership for 1, 2 or 3 months, up to a total of 3 months in each membership year, from your dashboard. A pause starts from your next payment date. While paused, no payments are taken and you cannot book or use membership benefits. Your membership and monthly payments restart automatically when the pause ends; if you do not wish to continue, you must cancel before the pause ends. You may end a pause early from your dashboard, in which case your monthly payment is taken that day and your payment date changes to that date."},
+  {t:"12. Cancellation",b:"You may cancel anytime from your dashboard or by contacting us. Cancellations take effect at the end of your current billing month. No partial refunds are given for unused days, services, add-ons or credit within a started billing period."},
+  {t:"13. Missed Appointments",b:"Please provide at least 48 hours notice to cancel or reschedule. A minimum of 24 hours notice is required. Late cancellations or no-shows may result in loss of that period's maintenance service or complimentary add-on, or a temporary restriction on booking privileges."},
+  {t:"14. Booking Rules",b:"All appointments must be booked in advance and are subject to availability. Priority booking gives members earlier access to available slots. A booking is only confirmed once you receive confirmation from Chris 2 Styles Salon."},
+  {t:"15. Personal Benefits",b:"Membership benefits are personal to you as the named member and cannot be transferred, except for Elite styling credit gifted as described in section 7."},
+  {t:"16. Treatment Disclaimer",b:"Treatments are personalised based on your hair condition at each appointment. Results may vary depending on your hair type, existing condition, consistency and home aftercare. Chris 2 Styles Salon does not guarantee specific results or hair growth outcomes."},
+  {t:"17. Behaviour Policy",b:"Respectful behaviour toward salon staff and other clients is expected at all times. The salon reserves the right to refuse service or terminate memberships where behaviour is inappropriate or abusive."},
+  {t:"18. Governing Law",b:"These Terms and Conditions are governed by the laws of England and Wales. Any disputes shall be subject to the exclusive jurisdiction of the courts of England and Wales."},
 ];
 
 const SMAP={
@@ -905,6 +906,76 @@ function ChangePackage({mem,onChanged}){
     </div>
   );
 }
+// Pause (1-3 months from next payment date, max 3 months per membership year) and cancel, for the member.
+async function memberAction(body){
+  const res=await authFetch('/api/membership',{method:'POST',body:JSON.stringify(body)});
+  const out=await res.json().catch(()=>({}));
+  return res.ok?out:{error:out.error||"Something went wrong. Please try again."};
+}
+function PauseCancel({mem,ben,reload}){
+  const [mode,setMode]=React.useState(null); // 'pause' | 'cancel'
+  const [months,setMonths]=React.useState(1);
+  const [busy,setBusy]=React.useState(false);
+  const [msg,setMsg]=React.useState("");
+  if(!ben||ben.error)return null;
+  const left=ben.pause_months_left??0, p=ben.pause, cancelAt=ben.cancel_at;
+  async function run(body,ok){setBusy(true);setMsg("");const r=await memberAction(body);setBusy(false);if(r.error){setMsg(r.error);return;}setMode(null);setMsg(ok(r));reload&&reload();}
+  const box={background:"#FFF",borderRadius:14,border:"1px solid "+G.creamDk,padding:"18px 20px",marginBottom:14};
+  const btn=(primary)=>({background:primary?"linear-gradient(135deg,"+G.goldLt+","+G.gold+")":"#fff",border:primary?"none":"1px solid "+G.creamDk,borderRadius:6,padding:"10px 14px",cursor:"pointer",fontSize:13,fontWeight:700,color:primary?"#1A1A1A":"#888"});
+  return (
+    <div style={box}>
+      <div style={{fontWeight:700,color:"#1A1A1A",fontSize:15,marginBottom:4}}>Pause or cancel</div>
+      {cancelAt?(
+        <div>
+          <p style={{color:"#666",fontSize:13,lineHeight:1.7,margin:"0 0 10px"}}>Your membership is cancelled and ends on <strong>{fmtDay(cancelAt)}</strong>. You can use your benefits until then. No further payments will be taken.</p>
+          <button disabled={busy} onClick={()=>run({action:'undo_cancel'},()=>"Great, your membership will continue as normal.")} style={btn(true)}>{busy?"...":"Keep my membership"}</button>
+        </div>
+      ):p?(
+        <div>
+          <p style={{color:"#666",fontSize:13,lineHeight:1.7,margin:"0 0 10px"}}>{p.started
+            ?<>Your membership is paused until <strong>{fmtDay(p.ends_on)}</strong>. Payments restart automatically on that date. If you don't want to continue, please cancel before then.</>
+            :<>Your pause is booked from <strong>{fmtDay(p.starts_on)}</strong> to <strong>{fmtDay(p.ends_on)}</strong>. You can keep booking until it starts.</>}</p>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button disabled={busy} onClick={()=>run({action:'resume'},r=>r.cancelled_pause?"Your pause has been cancelled. Nothing has changed with your payments.":"Welcome back! Your payment has been taken today and you can book again.")} style={btn(true)}>{busy?"...":p.started?"End my pause now":"Cancel my pause"}</button>
+            <button onClick={()=>{setMode('cancel');setMsg("");}} style={btn(false)}>Cancel membership</button>
+          </div>
+          {p.started&&<div style={{color:"#999",fontSize:11,marginTop:8}}>Ending your pause now takes your monthly payment today, and your payment date moves to today's date.</div>}
+        </div>
+      ):(
+        <div>
+          <p style={{color:"#888",fontSize:12,lineHeight:1.6,margin:"0 0 10px"}}>Taking a break? You can pause for 1, 2 or 3 months (up to 3 months in each membership year). Your pause starts from your next payment date.</p>
+          {mode!=='pause'&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button disabled={left<1} onClick={()=>{setMode('pause');setMonths(Math.min(1,left));setMsg("");}} style={{...btn(false),color:left<1?"#BBB":G.goldDk,borderColor:left<1?"#EEE":G.gold}}>Pause membership</button>
+            <button onClick={()=>{setMode('cancel');setMsg("");}} style={btn(false)}>Cancel membership</button>
+          </div>}
+          {left<1&&<div style={{color:"#999",fontSize:11,marginTop:6}}>You've used your 3 months of pause for this membership year.</div>}
+          {mode==='pause'&&(
+            <div>
+              <div style={{display:"flex",gap:8,marginBottom:10}}>
+                {[1,2,3].map(n=><button key={n} disabled={n>left} onClick={()=>setMonths(n)} style={{flex:1,padding:"10px 0",borderRadius:6,cursor:n>left?"default":"pointer",fontSize:13,fontWeight:700,border:"1px solid "+(months===n?G.gold:G.creamDk),background:months===n?G.goldPale:"#fff",color:n>left?"#CCC":months===n?G.goldDk:"#666"}}>{n} month{n>1?"s":""}</button>)}
+              </div>
+              <div style={{color:"#666",fontSize:12,lineHeight:1.6,marginBottom:10}}>No payments will be taken and booking won't be available while you're paused. Your membership and payments restart automatically after {months} month{months>1?"s":""}. If you don't want to continue then, you'll need to cancel before your pause ends.</div>
+              <div style={{display:"flex",gap:8}}>
+                <button disabled={busy} onClick={()=>run({action:'pause',months},r=>"Your pause is booked from "+fmtDay(r.starts_on)+" to "+fmtDay(r.ends_on)+". Payments restart automatically on "+fmtDay(r.ends_on)+".")} style={{...btn(true),flex:1}}>{busy?"Saving...":"Confirm pause"}</button>
+                <button onClick={()=>setMode(null)} style={btn(false)}>Back</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {mode==='cancel'&&!cancelAt&&(
+        <div style={{marginTop:12,background:G.errBg,borderRadius:8,padding:"12px 14px"}}>
+          <div style={{color:G.err,fontSize:13,lineHeight:1.6,marginBottom:10}}>Are you sure? Your membership will end at the end of the month you've paid for. You can keep using your benefits until then, and no further payments will be taken.</div>
+          <div style={{display:"flex",gap:8}}>
+            <button disabled={busy} onClick={()=>run({action:'cancel'},r=>"Your membership is cancelled and ends on "+fmtDay(r.cancel_at)+".")} style={{...btn(false),color:G.err,borderColor:"#FFCDD2"}}>{busy?"...":"Yes, cancel my membership"}</button>
+            <button onClick={()=>setMode(null)} style={btn(false)}>Keep it</button>
+          </div>
+        </div>
+      )}
+      {msg&&<div style={{marginTop:10,background:G.creamLt,border:"1px solid "+G.creamDk,borderRadius:6,padding:"10px 12px",fontSize:12,color:"#5A4A2A",lineHeight:1.6}}>{msg}</div>}
+    </div>
+  );
+}
 function ClientDashboard({onBook,onLogout}) {
   const [mem,setMem]=React.useState({name:"Loading...",pkg:"essential",next:"",used:0,total:0,membershipId:null,status:"active"});
 
@@ -967,6 +1038,8 @@ function ClientDashboard({onBook,onLogout}) {
   const [showT,setShowT]=useState(false);
   const [mOpen,setMOpen]=useState(false);
   const [sec,setSec]=useState(null);
+  const [dashBen,reloadBen]=useBenefits(mem.membershipId);
+  const pausedNow=!!(dashBen&&!dashBen.error&&dashBen.paused_now);
   if(showT) return <Terms onBack={()=>setShowT(false)}/>;
 
   function S({id,icon,title,sub,children}) {
@@ -1069,13 +1142,19 @@ function ClientDashboard({onBook,onLogout}) {
             <div style={{fontWeight:700,color:"#5A4A10",fontSize:15,marginBottom:6}}>{mem.startsOn?"Your membership starts on "+fmtDay(mem.startsOn):"Your membership is starting soon"}</div>
             <p style={{color:"#6B5A1E",fontSize:13,margin:0,lineHeight:1.7}}>Your first payment will be taken on your chosen payment date. Once it goes through, your membership is active and you can book. Your benefits count from that date.</p>
           </div>)}
-        {mem.status!=='pending'&&<button onClick={onBook} style={{width:"100%",padding:"17px 0",background:"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",color:"#1A1A1A",border:"none",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:DP,letterSpacing:1.5,textTransform:"uppercase",cursor:"pointer",marginBottom:14}}>
+        {pausedNow&&(
+          <div style={{background:"#FFF3E0",border:"1px solid #FFD8A8",borderRadius:14,padding:"18px 20px",marginBottom:14}}>
+            <div style={{fontWeight:700,color:"#8A4B00",fontSize:15,marginBottom:6}}>Your membership is paused{dashBen.pause?" until "+fmtDay(dashBen.pause.ends_on):""}</div>
+            <p style={{color:"#8A5A1E",fontSize:13,margin:0,lineHeight:1.7}}>Booking and benefits are unavailable while you're paused. Payments restart automatically when your pause ends. You can end it early below.</p>
+          </div>)}
+        {mem.status!=='pending'&&!pausedNow&&<button onClick={onBook} style={{width:"100%",padding:"17px 0",background:"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",color:"#1A1A1A",border:"none",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:DP,letterSpacing:1.5,textTransform:"uppercase",cursor:"pointer",marginBottom:14}}>
           Book My Appointment
         </button>}
 
-        {mem.membershipId&&mem.status!=='pending'&&<div style={{marginTop:14}}><BenefitsPanel membershipId={mem.membershipId}/></div>}
+        {mem.membershipId&&mem.status!=='pending'&&!pausedNow&&<div style={{marginTop:14}}><BenefitsPanel membershipId={mem.membershipId}/></div>}
         {mem.pkg==='elite'&&mem.membershipId&&<div><CreditPanel membershipId={mem.membershipId}/></div>}
-        {mem.membershipId&&['active','pending'].includes(mem.status)&&<ChangePackage mem={mem} onChanged={(pkg,from)=>setMem(p=>({...p,pendingPackage:pkg,pendingFrom:from}))}/>}
+        {mem.membershipId&&['active','pending'].includes(mem.status)&&!pausedNow&&!(dashBen&&(dashBen.pause||dashBen.cancel_at))&&<ChangePackage mem={mem} onChanged={(pkg,from)=>setMem(p=>({...p,pendingPackage:pkg,pendingFrom:from}))}/>}
+        {mem.membershipId&&mem.status==='active'&&<PauseCancel mem={mem} ben={dashBen} reload={reloadBen}/>}
 
         {myBkgs.length>0&&(
           <S id="bkgs" icon="📋" title="Upcoming Appointments" sub={myBkgs.length+" scheduled"}>
@@ -1414,6 +1493,8 @@ function MemberDetail({member,onBack,onLogout}) {
         <button onClick={onLogout} style={{marginLeft:"auto",background:G.creamLt,border:"1px solid "+G.creamDk,borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:12,color:"#888"}}>Sign Out</button>
       </div>
       <div style={{maxWidth:760,margin:"0 auto",padding:"24px 16px 80px"}}>
+        {data.pause&&<div style={{background:"#FFF3E0",border:"1px solid #FFD8A8",borderRadius:12,padding:"12px 16px",marginBottom:14,fontSize:13,color:"#8A4B00"}}>{data.status==='paused'?"Paused":"Pause booked"}: {fmtDay(data.pause.starts_on)} to {fmtDay(data.pause.ends_on)}. Payments restart automatically on {fmtDay(data.pause.ends_on)}.</div>}
+        {data.cancelAt&&<div style={{background:G.errBg,border:"1px solid #FFCDD2",borderRadius:12,padding:"12px 16px",marginBottom:14,fontSize:13,color:G.err}}>Cancelled by the member: membership ends on {fmtDay(data.cancelAt)}. No further payments.</div>}
         {data.pendingPackage&&<div style={{background:G.goldPale,border:"1px solid "+G.gold,borderRadius:12,padding:"12px 16px",marginBottom:14,fontSize:13,color:"#5A4A10"}}>Package change booked: moving to <strong>{PKG_NAME[data.pendingPackage]}</strong>{data.pendingFrom?" on "+fmtDay(data.pendingFrom):" at their next payment date"}. This happens automatically.</div>}
         {data.membershipId&&<BenefitsPanel admin membershipId={data.membershipId}/>}
         {data.pkg==='elite'&&data.membershipId&&<CreditPanel admin membershipId={data.membershipId}/>}
@@ -1463,11 +1544,7 @@ function MemberDetail({member,onBack,onLogout}) {
 
         <div style={{background:"#fff",borderRadius:14,padding:20,marginBottom:14,border:"1px solid "+G.creamDk}}>
           <div style={{color:G.goldDk,fontSize:10,letterSpacing:2.5,textTransform:"uppercase",fontWeight:700,marginBottom:14}}>Manage Membership</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            {[{l:"Mark as Active",bg:G.okBg,c:G.ok},{l:"Pause Membership",bg:G.warnBg,c:G.warn},{l:"Cancel Membership",bg:G.errBg,c:G.err},{l:"Change Package",bg:G.goldPale,c:G.goldDk}].map(a=>(
-              <button key={a.l} style={{background:a.bg,color:a.c,border:"none",borderRadius:8,padding:"13px 14px",textAlign:"left",cursor:"pointer",fontSize:13,fontWeight:700,fontFamily:BD}}>{a.l}</button>
-            ))}
-          </div>
+          <p style={{color:"#666",fontSize:13,lineHeight:1.7,margin:0}}>Members pause, cancel and change package themselves from their dashboard, and you're emailed each time. Any pause, cancellation or package change booked for this member shows at the top of this page.</p>
         </div>
 
         <div style={{background:"#fff",borderRadius:14,padding:22,marginBottom:14,border:"1px solid "+G.creamDk}}>
@@ -1778,6 +1855,8 @@ function AdminDashboard({onLogout}) {
       try {
         const {data:clients}=await supabase.from('clients').select('*');
         const {data:memberships}=await supabase.from('memberships').select('*');
+        const today=new Date().toISOString().slice(0,10);
+        const {data:pauses}=await supabase.from('membership_pauses').select('*').neq('status','cancelled').gt('ends_on',today);
         setRealBookings(await adminLoadBookings());
         const {data:slotRows}=await supabase.from('slots').select('*').eq('is_blocked',false).gte('slot_date',new Date().toISOString().slice(0,10)).order('slot_date').order('slot_time');
         if(slotRows)setSlots(slotRows.map(r=>({id:r.id,sId:r.stylist_id||"s1",date:r.slot_date,time:String(r.slot_time).slice(0,5),dur:r.duration_mins,vip:r.members_only!==false,booked:!!r.booked})));
@@ -1790,7 +1869,9 @@ function AdminDashboard({onLogout}) {
               email:cl.email,
               phone:cl.phone||'',
               pkg:mem.package||'essential',
-              status:mem.status||'active',
+              status:(pauses||[]).some(p=>p.membership_id===mem.id&&p.starts_on<=today&&today<p.ends_on)?'paused':(mem.status||'active'),
+              pause:(pauses||[]).find(p=>p.membership_id===mem.id)||null,
+              cancelAt:mem.cancel_at||null,
               joined:new Date(cl.created_at).toLocaleDateString('en-GB',{month:'short',year:'numeric'}),
               next:'See Stripe',
               used:mem.sessions_used||0,
