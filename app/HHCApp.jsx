@@ -538,6 +538,10 @@ function PkgTag({p}) {
   return <span style={{background:G.graphite,color:c,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:2,textTransform:"uppercase",fontFamily:BD}}>{p}</span>;
 }
 
+// Visible "Back" button for screens that had none (works with the phone/browser back button too).
+function BackBtn({onClick,light=true,label="Back"}){
+  return <button onClick={onClick} aria-label={label} style={{background:light?"rgba(255,255,255,0.12)":G.creamLt,border:"1px solid "+(light?"rgba(255,255,255,0.35)":G.creamDk),color:light?"#FFF":G.goldDk,borderRadius:20,padding:"7px 16px",cursor:"pointer",fontSize:13,fontWeight:700,fontFamily:BD,display:"inline-flex",alignItems:"center",gap:6}}><span style={{fontSize:16,lineHeight:1}}>{"\u2190"}</span>{label}</button>;
+}
 function Logo({light,sz}) {
   sz=sz||26;
   return (
@@ -672,7 +676,7 @@ function Bot({onClose}) {
   );
 }
 
-function ClientLogin({onLogin}) {
+function ClientLogin({onLogin,onBack}) {
   const [tab,setTab]=useState("login");
   const [showT,setShowT]=useState(false);
   const [email,setLoginEmail]=useState("");
@@ -702,6 +706,7 @@ function ClientLogin({onLogin}) {
       <img src={SALON_EXTERIOR} alt="salon" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
       <div style={{position:"absolute",inset:0,background:"linear-gradient(160deg,rgba(0,0,0,0.88),rgba(10,6,0,0.82))"}}/>
       <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,transparent,"+G.gold+",transparent)"}}/>
+      {onBack&&<div style={{position:"absolute",top:16,left:16,zIndex:2}}><BackBtn onClick={onBack}/></div>}
       <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
         <div style={{textAlign:"center",marginBottom:44}}>
           <Logo light sz={30}/>
@@ -745,7 +750,7 @@ function ClientLogin({onLogin}) {
   );
 }
 
-function ClientPackages({onSelect}) {
+function ClientPackages({onSelect,onBack}) {
   const [sel,setSel]=useState(null);
   const [showT,setShowT]=useState(false);
   const [showForm,setShowForm]=useState(false);
@@ -758,7 +763,7 @@ function ClientPackages({onSelect}) {
       <div style={{position:"relative",height:200,overflow:"hidden"}}>
         <img src={SALON_WASHBAY} alt="salon" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 60%",filter:"brightness(0.85)"}}/>
         <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(0,0,0,0.4),rgba(8,8,8,1))"}}/>
-        <div style={{position:"absolute",top:0,left:0,right:0,padding:"20px 24px"}}><Logo light sz={24}/></div>
+        <div style={{position:"absolute",top:0,left:0,right:0,padding:"20px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><Logo light sz={24}/>{onBack&&<BackBtn onClick={onBack}/>}</div>
         <div style={{position:"absolute",bottom:24,left:0,right:0,textAlign:"center"}}>
           <div style={{color:G.gold,fontSize:10,letterSpacing:4,textTransform:"uppercase",marginBottom:8}}>Choose Your Membership</div>
           <h2 style={{fontFamily:SR,color:G.white,fontSize:26,fontWeight:400,margin:0,fontStyle:"italic"}}>Join the Healthy Hair Club</h2>
@@ -1093,8 +1098,14 @@ function ClientDashboard({onBook,onLogout}) {
   );
 }
 
-function ClientBooking({onBack}) {
-  const [step,setStep]=useState(1);
+function ClientBooking({onBack,onDone}) {
+  const [step,setStepRaw]=useState(1);
+  // Each booking step is a history entry: phone/browser Back goes to the previous step, Forward returns.
+  function setStep(n){setStepRaw(n);try{window.history.pushState({...(window.history.state||{}),step:n},"",window.location.href);window.scrollTo(0,0);}catch(e){}}
+  React.useEffect(()=>{
+    function onPop(e){const st=e.state||{}; if(st.view==="client"&&st.cScr==="booking")setStepRaw(st.step||1);}
+    window.addEventListener('popstate',onPop); return ()=>window.removeEventListener('popstate',onPop);
+  },[]);
   const [svc,setSvc]=useState(null);
   const [slot,setSlot]=useState(null);
   const [realSlots,setRealSlots]=React.useState([]);
@@ -1130,7 +1141,7 @@ function ClientBooking({onBack}) {
   return (
     <div style={{minHeight:"100vh",background:G.cream,fontFamily:BD}}>
       <div style={{background:"#fff",borderBottom:"1px solid "+G.creamDk,padding:"16px 24px",display:"flex",alignItems:"center",gap:16}}>
-        <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666",padding:0}}>{"<"}</button>
+        <BackBtn light={false} onClick={onBack}/>
         <Logo light={false} sz={22}/>
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:12}}>
           <button onClick={()=>setChat(true)} style={{background:G.goldPale,border:"1px solid "+G.gold+"44",borderRadius:4,padding:"6px 14px",cursor:"pointer",color:G.goldDk,fontSize:11,fontWeight:700,fontFamily:DP,letterSpacing:1}}>Help</button>
@@ -1300,7 +1311,8 @@ function ClientBooking({onBack}) {
               if(!res.ok){setBookErr(out.error||'Booking failed. Please try again.');setSubmitting(false);return;}
             }catch(e){setBookErr('Booking failed. Please check your connection and try again.');setSubmitting(false);return;}
             setSubmitting(false);
-            setStep(5);
+            // Booking sent: replace this history entry so Back can't return to "Confirm" and send it twice.
+            setStepRaw(5);try{window.history.replaceState({...(window.history.state||{}),step:5},"",window.location.href);}catch(e){}
           }}>{submitting?"Booking...":"Confirm Booking"}</Btn></div>
             </div>
           </div>
@@ -1314,7 +1326,7 @@ function ClientBooking({onBack}) {
             <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:"uppercase",marginBottom:12}}>Booking Requested</div>
             <h3 style={{fontFamily:SR,color:"#1A1A1A",fontSize:26,fontWeight:400,fontStyle:"italic",margin:"0 0 12px"}}>You are all set!</h3>
             <p style={{color:"#666",fontSize:14,lineHeight:1.8,maxWidth:360,margin:"0 auto 32px"}}>Christine will confirm your appointment shortly.</p>
-            <Btn onClick={onBack}>Back to Dashboard</Btn>
+            <Btn onClick={onDone||onBack}>Back to Dashboard</Btn>
           </div>
         )}
       </div>
@@ -2086,19 +2098,39 @@ function AdminDashboard({onLogout}) {
 }
 
 export default function App({startAdmin=false}) {
-  const [view,setView]=useState(startAdmin?"admin":"landing");
-  const [cScr,setCS]=useState("login");
-  const [aScr,setAS]=useState("login");
+  const [view,setViewRaw]=useState(startAdmin?"admin":"landing");
+  const [cScr,setCSRaw]=useState("login");
+  const [aScr,setASRaw]=useState("login");
+  // Each screen change is added to the browser history, so the phone/browser Back and Forward buttons
+  // move between screens instead of leaving the site.
+  const nav=React.useRef({view:startAdmin?"admin":"landing",cScr:"login",aScr:"login"});
+  const HASH={landing:"",client_login:"#sign-in",client_packages:"#join",client_dashboard:"#my-account",client_booking:"#book",admin_login:"",admin_dashboard:""};
+  function go(next){
+    const s={...nav.current,...next}; nav.current=s;
+    setViewRaw(s.view);setCSRaw(s.cScr);setASRaw(s.aScr);
+    try{const h=HASH[s.view==="client"?"client_"+s.cScr:s.view==="admin"?"admin_"+s.aScr:"landing"]||"";
+      window.history.pushState(s,"",window.location.pathname+window.location.search+h);}catch(e){}
+    try{window.scrollTo(0,0);}catch(e){}
+  }
+  React.useEffect(()=>{
+    try{window.history.replaceState(nav.current,"",window.location.pathname+window.location.search);}catch(e){}
+    function onPop(e){const s=e.state; if(!s||!s.view)return; nav.current=s; setViewRaw(s.view);setCSRaw(s.cScr);setASRaw(s.aScr); try{window.scrollTo(0,0);}catch(err){}}
+    window.addEventListener('popstate',onPop);
+    return ()=>window.removeEventListener('popstate',onPop);
+  },[]);
+  const setView=v=>go({view:v}), setCS=c=>go({cScr:c}), setAS=a=>go({aScr:a});
+  async function signOut(){try{await supabase.auth.signOut();}catch(e){} if(startAdmin){window.location.href='/admin';return;} go({view:"landing",cScr:"login",aScr:"login"});}
+  const goBack=()=>{ if(window.history.length>1) window.history.back(); else go({view:"landing"}); };
 
   if(view==="landing"){
     return <LandingPageComp 
-      onJoin={(pkg)=>{setView("client");setCS("packages");}}
-      onSignIn={()=>{setView("client");setCS("login");}}/>;
+      onJoin={(pkg)=>go({view:"client",cScr:"packages"})}
+      onSignIn={()=>go({view:"client",cScr:"login"})}/>;
   }
 
   if(view==="client"){
-    if(cScr==="login") return <ClientLogin onLogin={()=>setCS("dashboard")}/>;
-    if(cScr==="packages") return <ClientPackages onSelect={async(pkg,email,name,payDay)=>{
+    if(cScr==="login") return <ClientLogin onBack={goBack} onLogin={()=>setCS("dashboard")}/>;
+    if(cScr==="packages") return <ClientPackages onBack={goBack} onSelect={async(pkg,email,name,payDay)=>{
       try {
         const res = await fetch('/api/create-checkout', {
           method:'POST',
@@ -2112,12 +2144,12 @@ export default function App({startAdmin=false}) {
         alert('Connection error. Please try again.');
       }
     }}/>;
-    if(cScr==="booking") return <ClientBooking onBack={()=>setCS("dashboard")}/>;
-    return <ClientDashboard onBook={()=>setCS("booking")} onLogout={()=>{setView("home");setCS("login");}}/>;
+    if(cScr==="booking") return <ClientBooking onBack={goBack} onDone={()=>setCS("dashboard")}/>;
+    return <ClientDashboard onBook={()=>setCS("booking")} onLogout={signOut}/>;
   }
   if(view==="admin"){
     if(aScr==="login") return <AdminLogin onLogin={()=>setAS("dashboard")}/>;
-    return <AdminDashboard onLogout={()=>{setView("home");setAS("login");}}/>;
+    return <AdminDashboard onLogout={signOut}/>;
   }
 
   return (
