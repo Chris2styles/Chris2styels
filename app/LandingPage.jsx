@@ -19,21 +19,21 @@ const PKGS = [
   {
     id:"essential",name:"Essential",sub:"Club Access",price:39,disc:10,badge:null,
     tagline:"Quarterly maintenance, priority access and member savings.",
-    included:["One full maintenance service every three months","One complimentary add-on per membership year (e.g. colour, a weave or plaits)","Priority booking access","Members-only appointment slots","10% off styling and premium services","Professional healthy hair maintenance advice"],
+    included:["One full maintenance service every three months (treatment, wash and style, or weave/braids wash and refresh)","One complimentary add-on per membership year (e.g. colour, a weave or plaits)","Priority booking access","Members-only appointment slots","10% off styling and premium services","Professional healthy hair maintenance advice"],
     excluded:"Complimentary aftercare products are not included with Essential.",
     cta:"Choose Essential"
   },
   {
     id:"signature",name:"Signature",sub:"Care",price:99,disc:15,badge:"Most Popular",
     tagline:"One monthly maintenance service plus ongoing member benefits.",
-    included:["One monthly maintenance service","Two complimentary add-ons per membership year (e.g. colour, a weave or plaits)","Complimentary Aftercare Products Provided","Hair and scalp assessment","Shampoo and cleanse","Professional treatment selected according to hair needs","Sustenance, Olaplex or K18 where appropriate","Trim where required","Basic styling","Healthy hair maintenance advice","Priority booking","15% off selected premium services"],
+    included:["One monthly maintenance service (treatment, wash and style, or weave/braids wash and refresh)","Two complimentary add-ons per membership year (e.g. colour, a weave or plaits)","Complimentary Aftercare Products Provided","Hair and scalp assessment","Shampoo and cleanse","Professional treatment selected according to hair needs","Sustenance, Olaplex or K18 where appropriate","Trim where required","Basic styling","Healthy hair maintenance advice","Priority booking","15% off selected premium services"],
     excluded:null,
     cta:"Choose Signature"
   },
   {
     id:"elite",name:"Elite",sub:"VIP",price:149,disc:20,badge:"Premium",
     tagline:"The highest level of care and flexibility.",
-    included:["One monthly maintenance service","Two complimentary add-ons per membership year (e.g. colour, a weave or plaits)","Complimentary Aftercare Products Provided","\u00A330 monthly premium styling credit",
+    included:["One monthly maintenance service (treatment, wash and style, or weave/braids wash and refresh)","Two complimentary add-ons per membership year (e.g. colour, a weave or plaits)","Complimentary Aftercare Products Provided","\u00A330 monthly premium styling credit",
 "Gift your credit to family and friends","Priority appointments","Free consultations","Birthday Glam bonus","Exclusive member benefits"],
     excluded:null,
     cta:"Choose Elite"
@@ -67,6 +67,7 @@ const FAQS = [
   {q:"Are all three treatments included every month?",a:"No. Sustenance, Olaplex and K18 are not all applied simultaneously. Your stylist will assess your hair at each appointment and select the most appropriate treatment according to your hair's condition and needs."},
   {q:"What happens if my payment fails?",a:"If your payment fails, your booking access is temporarily paused. You will receive a notification to update your payment details. Once resolved, your access is automatically restored."},
   {q:"Can I upgrade or downgrade?",a:"Yes. Please contact the salon to change your membership level. The change takes effect from your next payment date."},
+  {q:"What can my maintenance service be?",a:"Your maintenance service is the care you get in between your main appointments, so your hair isn't left too long without attention. You choose what suits your hair at the time: a professional treatment (such as Sustenance, Olaplex or K18), a wash and style, a weave wash and refresh (washed, retied and maintained), or a braids wash and refresh. For example, if your weave lasts 6 to 8 weeks, you can come in part-way through to have it washed, retied and maintained."},
   {q:"Do unused appointments roll over?",a:"No. Maintenance services must be used within their period — each membership month for Signature and Elite, and each three-month period for Essential. Unused services do not roll over."},
   {q:"What is a complimentary add-on?",a:"Each complimentary add-on makes one add-on of your choice free on a visit — for example colour, a weave or plaits. Essential includes one per membership year; Signature and Elite include two. They reset each membership year and unused ones expire."},
   {q:"Can I gift my Elite credit?",a:"Yes. Elite members can gift some or all of their monthly £30 styling credit to anyone they like — family, friends or someone new to the salon — from their dashboard. Gifted credit must be used by the end of that membership month."},

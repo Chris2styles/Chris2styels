@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin as supabase, getUserFromReq, SERVICES, notify } from '../../lib/server'
+import { supabaseAdmin as supabase, getUserFromReq, SERVICES, notify, isMaintenance } from '../../lib/server'
 
 export async function POST(req) {
   try {
@@ -23,7 +23,7 @@ export async function POST(req) {
 
     // Maintenance services are limited (Essential: 1 per 3-month block from the 3rd month; Signature/Elite: 1 per month).
     // Check before taking the slot so the member gets a clear message; approval re-checks in the database.
-    if (service === 'Monthly Maintenance' || service === 'Quarterly Maintenance') {
+    if (isMaintenance(service)) {
       const { data: s0 } = await supabase.from('slots').select('slot_date').eq('id', slotId).maybeSingle()
       const { data: mem } = await supabase.from('memberships').select('id')
         .eq('client_id', client.id).order('created_at', { ascending: false }).limit(1).maybeSingle()

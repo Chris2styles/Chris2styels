@@ -95,7 +95,11 @@ create table if not exists public.credit_gifts (
   membership_id uuid not null references public.memberships(id),
   from_client_id uuid not null references public.clients(id),
   recipient_name text not null,
-  recipient_contact text not null,
+  recipient_contact text,
+  recipient_under18 boolean not null default false,
+  recipient_age int check (recipient_age is null or recipient_age between 0 and 120),
+  recipient_phone text,
+  recipient_email text,
   amount numeric(10,2) not null check (amount > 0),
   used_amount numeric(10,2) not null default 0 check (used_amount >= 0),
   expires_on date not null,
@@ -124,9 +128,11 @@ drop policy if exists gift_redemptions_admin on public.credit_gift_redemptions;
 create policy gift_redemptions_admin on public.credit_gift_redemptions for select using (public.is_admin());
 
 -- Member gives credit. Only the member themself, only Elite, only an active membership, only up to their balance.
-create or replace function public.gift_credit(p_membership uuid, p_name text, p_contact text, p_amount numeric) returns json
+-- Gift rules (Christine, 2 Nov): name always; if the person is under 18 nothing else is needed (age optional);
+-- if 18 or over, a phone number is required and an email is optional.
+create or replace function public.gift_credit(p_membership uuid, p_name text, p_under18 boolean, p_age int, p_phone text, p_email text, p_amount numeric) returns json
 language plpgsql security definer set search_path = public as $$
-declare m public.memberships; c public.clients; bal numeric; w record; gid uuid;
+declare m public.memberships; c public.clients; bal numeric; w record; gid uuid; ph text; em text;
 begin
   select * into m from public.memberships where id = p_membership for update;
   if not found then raise exception 'membership not found'; end if;
@@ -134,22 +140,25 @@ begin
   if auth.email() is null or lower(c.email) <> lower(auth.email()) then raise exception 'not allowed'; end if;
   if m.package <> 'elite' then raise exception 'credit gifting is an Elite benefit'; end if;
   if m.status <> 'active' then raise exception 'your membership needs to be active to gift credit'; end if;
-  if p_name is null or length(trim(p_name)) = 0 or p_contact is null or length(trim(p_contact)) = 0 then
-    raise exception 'please enter the name and a phone number or email for the person'; end if;
+  if p_name is null or length(trim(p_name)) = 0 then raise exception 'please enter the name of the person'; end if;
+  if p_age is not null and (p_age < 0 or p_age > 120) then raise exception 'please enter a valid age'; end if;
+  if p_age is not null and p_age >= 18 and coalesce(p_under18,false) then raise exception 'the age entered is 18 or over'; end if;
+  ph := nullif(trim(coalesce(p_phone,'')), ''); em := nullif(trim(coalesce(p_email,'')), '');
+  if not coalesce(p_under18,false) and ph is null then raise exception 'please enter a phone number for the person'; end if;
   if p_amount is null or p_amount <= 0 then raise exception 'enter an amount above £0'; end if;
   p_amount := round(p_amount, 2);
   bal := public.credit_balance(m.id);
   if p_amount > bal then raise exception 'you have £% available to gift', bal; end if;
   select * into w from public.hhc_window(m.package, m.created_at::date, 'maintenance', current_date);
-  insert into public.credit_gifts(membership_id, from_client_id, recipient_name, recipient_contact, amount, expires_on)
-  values (m.id, m.client_id, trim(p_name), trim(p_contact), p_amount, w.window_end) returning id into gid;
+  insert into public.credit_gifts(membership_id, from_client_id, recipient_name, recipient_contact, recipient_under18, recipient_age, recipient_phone, recipient_email, amount, expires_on)
+  values (m.id, m.client_id, trim(p_name), coalesce(ph, em), coalesce(p_under18,false), p_age, ph, em, p_amount, w.window_end) returning id into gid;
   insert into public.credit_ledger(membership_id, client_id, kind, amount, note, created_by)
   values (m.id, m.client_id, 'gift', -p_amount, 'Gifted to ' || trim(p_name), auth.email());
   update public.memberships set style_credit = public.credit_balance(m.id) where id = m.id;
   return json_build_object('gift', gid, 'amount', p_amount, 'expires_on', w.window_end, 'balance', public.credit_balance(m.id));
 end; $$;
-revoke execute on function public.gift_credit(uuid, text, text, numeric) from public, anon;
-grant execute on function public.gift_credit(uuid, text, text, numeric) to authenticated;
+revoke execute on function public.gift_credit(uuid, text, boolean, int, text, text, numeric) from public, anon;
+grant execute on function public.gift_credit(uuid, text, boolean, int, text, text, numeric) to authenticated;
 
 -- Salon uses a gift when the person visits (part or all of it).
 create or replace function public.redeem_gift(p_gift uuid, p_amount numeric, p_note text default null) returns json
@@ -237,3 +246,10 @@ begin
     'credit', case when m.package = 'elite' then public.credit_balance(m.id) else null end
   );
 end; $$;
+
+
+-- 6. Maintenance can be a treatment, wash and style, weave wash and refresh, or braids wash and refresh (Christine, 2 Nov).
+create or replace function public.hhc_is_maintenance(p_service text) returns boolean
+language sql immutable set search_path = public as $$
+  select p_service like 'Maintenance: %' or p_service in ('Monthly Maintenance','Quarterly Maintenance')
+$$;

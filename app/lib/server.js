@@ -23,11 +23,15 @@ export function packageForPrice(priceId) {
 // Elite monthly styling credit (GBP). Change here only.
 export const ELITE_MONTHLY_CREDIT = 30
 
+// Maintenance services: any one of these uses the member's maintenance allowance.
+export const MAINTENANCE = ['Maintenance: Treatment', 'Maintenance: Wash and Style', 'Maintenance: Weave Wash and Refresh', 'Maintenance: Braids Wash and Refresh']
+export function isMaintenance(s) { return MAINTENANCE.includes(s) || s === 'Monthly Maintenance' || s === 'Quarterly Maintenance' }
+
 // Services each package may book. Keep in sync with SVCMAP in HHCApp.jsx.
 export const SERVICES = {
-  essential: ['Quarterly Maintenance', 'Priority Appointment', 'Consultation', 'Basic Styling', 'Sustenance Treatment', 'Olaplex Treatment', 'K18 Treatment'],
-  signature: ['Monthly Maintenance', 'Wash and Treatment', 'Sustenance Treatment', 'Olaplex Treatment', 'K18 Treatment', 'Scalp Care', 'Basic Styling', 'Braids', 'Wig Install', 'Priority Appointment'],
-  elite: ['Monthly Maintenance', 'Wash and Treatment', 'Sustenance Treatment', 'Olaplex Treatment', 'K18 Treatment', 'Scalp Care', 'Basic Styling', 'Braids', 'Wig Install', 'Premium Styling', 'Priority Appointment', 'Consultation', 'Birthday Glam'],
+  essential: [...MAINTENANCE, 'Priority Appointment', 'Consultation', 'Basic Styling', 'Sustenance Treatment', 'Olaplex Treatment', 'K18 Treatment'],
+  signature: [...MAINTENANCE, 'Wash and Treatment', 'Sustenance Treatment', 'Olaplex Treatment', 'K18 Treatment', 'Scalp Care', 'Basic Styling', 'Braids', 'Wig Install', 'Priority Appointment'],
+  elite: [...MAINTENANCE, 'Wash and Treatment', 'Sustenance Treatment', 'Olaplex Treatment', 'K18 Treatment', 'Scalp Care', 'Basic Styling', 'Braids', 'Wig Install', 'Premium Styling', 'Priority Appointment', 'Consultation', 'Birthday Glam'],
 }
 
 // Returns the signed-in Supabase user from the "Authorization: Bearer <token>" header, or null.

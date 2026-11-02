@@ -54,7 +54,7 @@ function giftStatus(g){
 // Member: give some of this month's credit to anyone (family, friends, someone new to the salon).
 function GiftCredit({membershipId,balance,onDone}){
   const [open,setOpen]=React.useState(false);
-  const [f,setF]=React.useState({name:"",contact:"",amount:""});
+  const [f,setF]=React.useState({name:"",under18:false,age:"",phone:"",email:"",amount:""});
   const [busy,setBusy]=React.useState(false);
   const [msg,setMsg]=React.useState("");
   const [gifts,setGifts]=React.useState([]);
@@ -67,14 +67,16 @@ function GiftCredit({membershipId,balance,onDone}){
   async function send(){
     setMsg("");
     const amt=Number(f.amount);
-    if(!f.name.trim()||!f.contact.trim()||!(amt>0)){setMsg("Please enter their name, a phone number or email, and an amount.");return;}
+    if(!f.name.trim()){setMsg("Please enter the name of the person.");return;}
+    if(!f.under18&&!f.phone.trim()){setMsg("Please enter their phone number (not needed for under-18s).");return;}
+    if(!(amt>0)){setMsg("Please enter an amount.");return;}
     setBusy(true);
-    const {data,error}=await supabase.rpc('gift_credit',{p_membership:membershipId,p_name:f.name.trim(),p_contact:f.contact.trim(),p_amount:amt});
+    const {data,error}=await supabase.rpc('gift_credit',{p_membership:membershipId,p_name:f.name.trim(),p_under18:f.under18,p_age:f.age===""?null:Number(f.age),p_phone:f.under18?null:f.phone.trim(),p_email:f.under18?null:(f.email.trim()||null),p_amount:amt});
     setBusy(false);
     if(error){setMsg(error.message.charAt(0).toUpperCase()+error.message.slice(1)+".");return;}
-    try{await authFetch('/api/notify',{method:'POST',body:JSON.stringify({type:'credit_gifted',data:{recipient:f.name.trim(),contact:f.contact.trim(),amount:Number(data.amount).toFixed(2),expires:fmtDay(data.expires_on)}})});}catch(e){}
+    try{await authFetch('/api/notify',{method:'POST',body:JSON.stringify({type:'credit_gifted',data:{recipient:f.name.trim()+(f.age?" (age "+f.age+")":f.under18?" (under 18)":""),contact:f.under18?"Under 18, no contact needed":[f.phone.trim(),f.email.trim()].filter(Boolean).join(", "),amount:Number(data.amount).toFixed(2),expires:fmtDay(data.expires_on)}})});}catch(e){}
     setMsg("Done! "+f.name.trim()+" has "+fmtMoney(data.amount)+" to use at Chris 2 Styles Salon until "+fmtDay(data.expires_on)+". Let them know to mention your name when they book.");
-    setF({name:"",contact:"",amount:""});setOpen(false);load();onDone&&onDone();
+    setF({name:"",under18:false,age:"",phone:"",email:"",amount:""});setOpen(false);load();onDone&&onDone();
   }
   return (
     <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid "+G.creamDk}}>
@@ -88,7 +90,14 @@ function GiftCredit({membershipId,balance,onDone}){
       {open&&(
         <div style={{marginTop:12}}>
           <input placeholder="Their name" value={f.name} onChange={e=>setF(p=>({...p,name:e.target.value}))} style={inp}/>
-          <input placeholder="Their phone number or email" value={f.contact} onChange={e=>setF(p=>({...p,contact:e.target.value}))} style={inp}/>
+          <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"#444",marginBottom:8}}>
+            <input type="checkbox" checked={f.under18} onChange={e=>setF(p=>({...p,under18:e.target.checked}))}/>This person is under 18 (e.g. your daughter)</label>
+          <input type="number" min="0" max="120" placeholder="Their age (optional)" value={f.age} onChange={e=>setF(p=>({...p,age:e.target.value,under18:e.target.value!==""?Number(e.target.value)<18:p.under18}))} style={inp}/>
+          {!f.under18&&(<>
+            <input type="tel" placeholder="Their phone number" value={f.phone} onChange={e=>setF(p=>({...p,phone:e.target.value}))} style={inp}/>
+            <input type="email" placeholder="Their email (optional)" value={f.email} onChange={e=>setF(p=>({...p,email:e.target.value}))} style={inp}/>
+          </>)}
+          {f.under18&&<div style={{color:"#888",fontSize:11,marginBottom:8}}>No phone number or email needed for under-18s. Just let the salon know when you book their appointment.</div>}
           <input type="number" min="1" max={balance} step="1" placeholder={"Amount (up to "+fmtMoney(balance)+")"} value={f.amount} onChange={e=>setF(p=>({...p,amount:e.target.value}))} style={inp}/>
           <div style={{color:"#888",fontSize:11,marginBottom:10}}>Gifted credit can be used until the end of your current membership month, the same as your own credit.</div>
           <div style={{display:"flex",gap:8}}>
@@ -133,7 +142,7 @@ function GiftsAdmin({membershipId=null,title="Gifted credit"}){
       {gifts.map(g=>{const st=giftStatus(g);const left=Number(g.amount)-Number(g.used_amount);const live=st.t==="Active";return(
         <div key={g.id} style={{padding:"10px 0",borderTop:"1px solid #F5F3EE",fontSize:13}}>
           <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
-            <span style={{color:"#1A1A1A"}}><strong>{g.recipient_name}</strong> {"·"} {g.recipient_contact}{!membershipId&&names[g.from_client_id]?" · from "+names[g.from_client_id]:""}</span>
+            <span style={{color:"#1A1A1A"}}><strong>{g.recipient_name}</strong>{g.recipient_age!=null?" (age "+g.recipient_age+")":g.recipient_under18?" (under 18)":""} {"·"} {g.recipient_under18?"no contact needed":([g.recipient_phone,g.recipient_email].filter(Boolean).join(", ")||g.recipient_contact)}{!membershipId&&names[g.from_client_id]?" · from "+names[g.from_client_id]:""}</span>
             <span style={{color:st.c,fontWeight:700}}>{live?fmtMoney(left)+" left, until "+fmtDay(g.expires_on):st.t}</span>
           </div>
           {live&&(
@@ -337,9 +346,9 @@ const PKGS=[
 ];
 
 const SVCMAP={
-  essential:["Quarterly Maintenance","Priority Appointment","Consultation","Basic Styling","Sustenance Treatment","Olaplex Treatment","K18 Treatment"],
-  signature:["Monthly Maintenance","Wash and Treatment","Sustenance Treatment","Olaplex Treatment","K18 Treatment","Scalp Care","Basic Styling","Braids","Wig Install","Priority Appointment"],
-  elite:["Monthly Maintenance","Wash and Treatment","Sustenance Treatment","Olaplex Treatment","K18 Treatment","Scalp Care","Basic Styling","Braids","Wig Install","Premium Styling","Priority Appointment","Consultation","Birthday Glam"],
+  essential:["Maintenance: Treatment","Maintenance: Wash and Style","Maintenance: Weave Wash and Refresh","Maintenance: Braids Wash and Refresh","Priority Appointment","Consultation","Basic Styling","Sustenance Treatment","Olaplex Treatment","K18 Treatment"],
+  signature:["Maintenance: Treatment","Maintenance: Wash and Style","Maintenance: Weave Wash and Refresh","Maintenance: Braids Wash and Refresh","Wash and Treatment","Sustenance Treatment","Olaplex Treatment","K18 Treatment","Scalp Care","Basic Styling","Braids","Wig Install","Priority Appointment"],
+  elite:["Maintenance: Treatment","Maintenance: Wash and Style","Maintenance: Weave Wash and Refresh","Maintenance: Braids Wash and Refresh","Wash and Treatment","Sustenance Treatment","Olaplex Treatment","K18 Treatment","Scalp Care","Basic Styling","Braids","Wig Install","Premium Styling","Priority Appointment","Consultation","Birthday Glam"],
 };
 
 const ADDONS=[
@@ -489,7 +498,7 @@ const TCSUMMARY=[
 const TCSECTIONS=[
   {t:"1. Membership Overview",b:"The Healthy Hair Club is a monthly membership offered by Chris 2 Styles Salon. There are three packages: Essential (\u00A339 per month), Signature (\u00A399 per month) and Elite (\u00A3149 per month). By joining you enter a monthly rolling agreement. Your membership year starts on the date you join."},
   {t:"2. What Each Package Includes",b:"Essential: one full maintenance service every three months, available from the third month of membership; one complimentary add-on per membership year; priority booking, members-only appointment slots and 10% off styling and premium services. Complimentary aftercare products are not included. Signature: one maintenance service per membership month; two complimentary add-ons per membership year; Complimentary Aftercare Products Provided; priority booking and 15% off selected premium services. Elite: one maintenance service per membership month; two complimentary add-ons per membership year; Complimentary Aftercare Products Provided; a \u00A330 premium styling credit each month; priority appointments, consultations, a Birthday Glam bonus and other member benefits."},
-  {t:"3. Maintenance Services",b:"Maintenance services must be used within the period they belong to (each membership month for Signature and Elite; each three-month period for Essential). Unused maintenance services do not roll over into the next period. Your stylist selects the most suitable treatment at each visit."},
+  {t:"3. Maintenance Services",b:"A maintenance service is care in between your main appointments. You may choose a professional treatment, a wash and style, a weave wash and refresh (washed, retied and maintained) or a braids wash and refresh. Where you choose a treatment, your stylist selects the most suitable one. Maintenance services must be used within the period they belong to (each membership month for Signature and Elite; each three-month period for Essential). Unused maintenance services do not roll over into the next period."},
   {t:"4. Complimentary Add-ons",b:"A complimentary add-on lets you have one add-on service of your choice free on a visit, for example colour, a weave or plaits. Each complimentary add-on covers one add-on only; any other add-ons on the same visit are charged at your member price. Complimentary add-ons reset at the start of each membership year and unused ones expire at the end of the membership year. Your request is confirmed by the salon when your booking is approved."},
   {t:"5. Aftercare Products (Signature and Elite)",b:"Complimentary aftercare products are provided to Signature and Elite members. How often products are topped up is decided by your stylist, based on how long each product lasts with normal use. Your stylist will tell you when your next top-up is due, and the date is shown on your dashboard. Products and brands may vary."},
   {t:"6. Elite Styling Credit",b:"Elite members receive \u00A330 of styling credit after each successful monthly payment, which can be put toward premium services and paid add-ons. Credit is applied by the salon when your booking is approved. Unused credit expires at the end of each membership month, when the next month's credit is added, and has no cash value."},
@@ -952,7 +961,7 @@ function ClientDashboard({onBook,onLogout}) {
               </div>
               <div style={{background:G.creamLt,borderRadius:10,padding:16,marginBottom:14,border:"1px solid "+G.creamDk}}>
                 <div style={{fontWeight:700,color:"#1A1A1A",fontSize:13,marginBottom:4}}>{mem.pkg==="essential"?"Quarterly Maintenance Service":"Monthly Maintenance Service"}</div>
-                <p style={{color:"#666",fontSize:12,lineHeight:1.7,margin:"0 0 12px"}}>Your appointment is personalised to your hair needs. Your stylist selects the most suitable treatments from the options below.</p>
+                <p style={{color:"#666",fontSize:12,lineHeight:1.7,margin:"0 0 12px"}}>Your maintenance service keeps your hair cared for in between your main appointments. Choose what suits your hair right now: a treatment, a wash and style, or a wash and refresh of your weave or braids (washed, retied and maintained). If you choose a treatment, your stylist selects the most suitable one from the options below.</p>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   {TREATS.map((t,i)=>(
                     <div key={i} style={{background:"#fff",borderRadius:8,padding:"10px 12px",border:"1px solid "+G.creamDk}}>
