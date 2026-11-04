@@ -5,6 +5,16 @@ import { useState, useEffect } from 'react'
 // Left empty, the section shows a clearly marked placeholder (no stock or AI image).
 const FOUNDER_PHOTO = ''
 
+// Real client reviews, quoted word for word (Treatwell and Google).
+const REVIEWS = [
+  { name: 'Nikki', service: 'Afro Hairdressing', source: 'Treatwell', text: 'Fantastic staff, personable service, uplifting salon atmosphere. From the moment I walk in, always feel welcomed. Chris was attentive and, as usual, provided great service.' },
+  { name: 'Lorna', service: 'Silk press, colour & treatment', source: 'Treatwell', text: 'She gave excellent service, skilled and knowledgeable in her work … I had a classic silk press, colour& treatment all beautifully done, very fast with the tools.' },
+  { name: 'Andrea', service: 'Silk Press', source: 'Treatwell', text: 'Great silk press for my daughter - would recommend' },
+  { name: 'Rachael', service: 'Afro Hair Extensions', source: 'Treatwell', text: 'redid my ponytail a lovely style and colour' },
+  { name: 'Geraldine', service: 'Afro Braids', source: 'Treatwell', text: 'Lovely as always, thanks Christine' },
+  { name: 'Google reviewer', service: 'Chris 2 Styles Salon', source: 'Google', text: 'Every time I leave the salon I feel both beautiful and special.' },
+]
+
 const G = {
   gold:"#C9A84C",goldLt:"#E2C97E",goldDk:"#9A7A2E",goldPale:"#F5EDD0",
   black:"#080808",charcoal:"#111",ink:"#1A1A1A",
@@ -346,13 +356,23 @@ export default function LandingPage({onJoin, onSignIn}) {
               </div>
             ))}
           </div>
-          <div style={{marginTop:32,background:G.creamLt,borderRadius:12,padding:'24px 20px',border:'1px solid '+G.creamDk}}>
-            <div style={{display:'flex',justifyContent:'center',gap:4,marginBottom:12}}>
+          <div style={{marginTop:40}}>
+            <div style={{display:'flex',justifyContent:'center',gap:4,marginBottom:6}}>
               {[1,2,3,4,5].map(i=><span key={i} style={{color:G.gold,fontSize:20}}>★</span>)}
             </div>
-            <p style={{color:G.dim,fontSize:14,fontStyle:'italic',margin:'0 0 8px'}}>"Every time I leave the salon I feel both beautiful and special."</p>
-            <div style={{color:G.silver,fontSize:12}}>— Google Review · Chris 2 Styles Salon</div>
+            <div style={{color:G.ink,fontSize:15,fontWeight:700}}>Rated 4.9 out of 5 from over 540 reviews on Treatwell</div>
           </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:14,marginTop:22,textAlign:'left'}}>
+            {REVIEWS.map((r,i)=>(
+              <div key={i} style={{background:G.creamLt,borderRadius:12,padding:'18px 18px',border:'1px solid '+G.creamDk,display:'flex',flexDirection:'column'}}>
+                <p style={{color:G.dim,fontSize:14,fontStyle:'italic',lineHeight:1.6,margin:'0 0 12px',flex:1}}>"{r.text}"</p>
+                <div style={{color:G.ink,fontSize:13,fontWeight:700}}>{r.name}</div>
+                <div style={{color:G.silver,fontSize:11}}>{r.service} · {r.source}</div>
+              </div>
+            ))}
+          </div>
+          <a href="https://www.treatwell.co.uk/place/chris-2-styles-salon/" target="_blank" rel="noopener noreferrer"
+            style={{display:'inline-block',marginTop:24,color:G.goldDk,fontSize:13,fontWeight:700,textDecoration:'none',border:'1px solid '+G.gold,borderRadius:6,padding:'10px 18px'}}>Read all our reviews on Treatwell →</a>
         </div>
       </section>
 
