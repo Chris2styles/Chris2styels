@@ -8,6 +8,9 @@ const FOUNDER_PHOTO = '/photos/christine.jpg'
 // Client result photos (Christine's own salon photos).
 const RESULTS = [
   { src: '/photos/result-full-head-weave.jpg', caption: 'Full head weave' },
+  { src: '/photos/result-pink-colour-pixie.jpg', caption: 'Pink colour & pixie style' },
+  { src: '/photos/result-short-cut-finger-waves.jpg', caption: 'Short cut with finger waves' },
+  { src: '/photos/result-two-strand-twists.jpg', caption: 'Two-strand twists' },
 ]
 
 // Real client reviews, quoted word for word (Treatwell and Google).
@@ -352,7 +355,7 @@ export default function LandingPage({onJoin, onSignIn}) {
         <div style={{maxWidth:800,margin:'0 auto',textAlign:'center'}}>
           <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:'uppercase',marginBottom:12}}>Client Results</div>
           <h2 style={{fontFamily:SR,fontSize:28,color:G.ink,fontWeight:400,fontStyle:'italic',margin:'0 0 32px'}}>Real Results From Real Clients</h2>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,280px))',justifyContent:'center',gap:16}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:14}}>
             {RESULTS.map((r,i)=>(
               <figure key={i} style={{margin:0,background:G.creamLt,borderRadius:12,overflow:'hidden',border:'1px solid '+G.creamDk}}>
                 <img src={r.src} alt={r.caption+' by Chris 2 Styles Salon'} loading="lazy" style={{width:'100%',aspectRatio:'4 / 5',objectFit:'cover',display:'block'}}/>
