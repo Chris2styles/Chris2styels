@@ -74,8 +74,15 @@ export async function POST(req) {
     }
 
     if (type === 'message_received') {
-      await send(ADMIN, 'New Message — Healthy Hair Club',
-        emailWrap(`<h2>New Message from ${data.clientName}</h2><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p>${data.message}</p></div>${btn('Reply in Admin', URL+'/admin')}`)
+      const tel = data.phone ? String(data.phone).replace(/[^\d+]/g, '') : ''
+      await send(ADMIN, (data.phone ? 'Call Back Request — ' : 'New Message — ') + data.clientName,
+        emailWrap(`<h2>${data.phone ? 'Call back request' : 'New message'} from ${data.clientName}</h2>${data.phone ? `<p style='font-size:18px'><strong>Phone:</strong> <a href='tel:${tel}'>${data.phone}</a></p><p>They've been told you'll ring them back <strong>within 24 hours</strong>.</p>` : ''}<p><strong>Email:</strong> ${esc(data.clientEmail)}</p><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p style='white-space:pre-wrap'>${data.message}</p></div>${btn('Open Messages in Admin', URL+'/admin')}`)
+      )
+    }
+
+    if (type === 'message_replied') {
+      await send(data.clientEmail, 'A Reply from Chris 2 Styles Salon',
+        emailWrap(`<h2>Christine has replied to your message</h2><p>Hi ${data.clientName},</p><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p style='white-space:pre-wrap'>${data.preview}</p></div><p style='color:#888;font-size:13px'>You can reply to this email, or send another message from the Help button in the app.</p>${btn('Open the App', URL)}`)
       )
     }
 
@@ -111,12 +118,6 @@ export async function POST(req) {
       const user = internal ? null : await getUserFromReq(req)
       await send(ADMIN, 'Elite Credit Gifted — Healthy Hair Club',
         emailWrap(`<h2>An Elite member has gifted credit</h2><p><strong>From:</strong> ${esc(user?.email || 'Member')}</p><p><strong>To:</strong> ${data.recipient} (${data.contact})</p><p><strong>Amount:</strong> £${data.amount}</p><p><strong>Use by:</strong> ${data.expires}</p><p>You'll find it under Bookings → Gifted Elite credit when they come in.</p>${btn('View in Admin', URL+'/admin')}`)
-      )
-    }
-
-    if (type === 'message_replied') {
-      await send(data.clientEmail, 'New Message from Chris 2 Styles Salon',
-        emailWrap(`<h2>You have a new message from Chris 2 Styles Salon</h2><p>Hi ${data.clientName},</p><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p>${data.preview}</p></div>${btn('View Message', URL)}`)
       )
     }
 

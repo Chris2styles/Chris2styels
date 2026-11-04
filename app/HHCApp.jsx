@@ -648,30 +648,48 @@ function BotBtn({onClick}) {
   );
 }
 
+// Help: members send a message to the salon (admin Messages tab + email). Leaving a phone number = call back within 24 hours.
 function Bot({onClose}) {
-  const [msgs,setMsgs]=React.useState([{r:"bot",t:"Hi! I am your Healthy Hair Club Assistant. Ask me about memberships, treatments, payments or bookings."}]);
+  const [msgs,setMsgs]=React.useState([{r:"bot",t:"Hi! Send Christine a message about your membership, treatments, payments or bookings. If you'd like a call back, add your phone number and she'll ring you within 24 hours or less."}]);
   const [inp,setInp]=React.useState("");
-  function send(text) {
-    if(!text.trim())return;
-    setMsgs(p=>[...p,{r:"user",t:text},{r:"bot",t:"Thank you for your message. Please contact the salon directly at 020 3754 7889 or christine.walker@hairdresser.net for personal assistance."}]);
-    setInp("");
+  const [phone,setPhone]=React.useState("");
+  const [busy,setBusy]=React.useState(false);
+  React.useEffect(()=>{(async()=>{try{const {data:{session}}=await supabase.auth.getSession();const em=session?.user?.email;if(!em)return;
+    const {data}=await supabase.from('clients').select('phone').ilike('email',em).maybeSingle();if(data?.phone)setPhone(data.phone);}catch(e){}})();},[]);
+  async function send(){
+    const text=inp.trim(); if(!text||busy)return;
+    setBusy(true); setMsgs(p=>[...p,{r:"user",t:text+(phone.trim()?"\n☎ "+phone.trim():"")}]); setInp("");
+    try{
+      const res=await authFetch('/api/messages',{method:'POST',body:JSON.stringify({message:text,phone:phone.trim()})});
+      const out=await res.json().catch(()=>({}));
+      if(!res.ok){setMsgs(p=>[...p,{r:"bot",t:out.error||"Sorry, your message couldn't be sent. Please try again, or call the salon on 020 3754 7889."}]);setInp(text);}
+      else setMsgs(p=>[...p,{r:"bot",t:out.callback
+        ?"Thank you! Your message has been sent to Christine. She'll ring you back on "+phone.trim()+" within 24 hours or less."
+        :"Thank you! Your message has been sent to Christine and she'll reply by email within 24 hours or less. Prefer a call back? Add your phone number below and send another message."}]);
+    }catch(e){setMsgs(p=>[...p,{r:"bot",t:"Sorry, your message couldn't be sent. Please check your connection, or call the salon on 020 3754 7889."}]);setInp(text);}
+    setBusy(false);
   }
+  const field={width:"100%",padding:"10px 12px",background:"#272727",border:"1px solid #3A3A3A",borderRadius:4,color:"#FFF",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit"};
   return (
-    <div style={{position:"fixed",bottom:20,right:20,zIndex:1000,width:320,background:"#111",border:"1px solid #C9A84C55",borderRadius:8,boxShadow:"0 20px 60px rgba(0,0,0,0.7)",display:"flex",flexDirection:"column",maxHeight:"60vh"}}>
+    <div style={{position:"fixed",bottom:20,right:20,left:20,marginLeft:"auto",zIndex:1000,maxWidth:340,background:"#111",border:"1px solid #C9A84C55",borderRadius:8,boxShadow:"0 20px 60px rgba(0,0,0,0.7)",display:"flex",flexDirection:"column",maxHeight:"75vh"}}>
       <div style={{padding:"14px 18px",borderBottom:"1px solid #272727",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#1A1A1A",borderRadius:"8px 8px 0 0"}}>
-        <div style={{color:"#FFF",fontWeight:700,fontSize:14}}>HHC Assistant</div>
-        <button onClick={onClose} style={{background:"none",border:"none",color:"#999",cursor:"pointer",fontSize:18}}>x</button>
+        <div>
+          <div style={{color:"#FFF",fontWeight:700,fontSize:14}}>Message the Salon</div>
+          <div style={{color:"#999",fontSize:11,marginTop:2}}>Christine replies within 24 hours</div>
+        </div>
+        <button onClick={onClose} aria-label="Close" style={{background:"none",border:"none",color:"#999",cursor:"pointer",fontSize:18}}>x</button>
       </div>
       <div style={{flex:1,overflowY:"auto",padding:14,display:"flex",flexDirection:"column",gap:10,minHeight:120}}>
         {msgs.map((m,i)=>(
           <div key={i} style={{display:"flex",justifyContent:m.r==="user"?"flex-end":"flex-start"}}>
-            <div style={{maxWidth:"88%",padding:"10px 14px",borderRadius:8,background:m.r==="user"?"linear-gradient(135deg,#E2C97E,#C9A84C)":"#272727",color:m.r==="user"?"#1A1A1A":"#CCC",fontSize:13,lineHeight:1.65}}>{m.t}</div>
+            <div style={{maxWidth:"88%",padding:"10px 14px",borderRadius:8,background:m.r==="user"?"linear-gradient(135deg,#E2C97E,#C9A84C)":"#272727",color:m.r==="user"?"#1A1A1A":"#CCC",fontSize:13,lineHeight:1.65,whiteSpace:"pre-wrap"}}>{m.t}</div>
           </div>
         ))}
       </div>
-      <div style={{padding:"10px 14px",borderTop:"1px solid #272727",display:"flex",gap:8}}>
-        <input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send(inp)} placeholder="Ask a question..." style={{flex:1,padding:"10px 12px",background:"#272727",border:"1px solid #3A3A3A",borderRadius:4,color:"#FFF",fontSize:13,outline:"none"}}/>
-        <button onClick={()=>send(inp)} style={{background:"linear-gradient(135deg,#E2C97E,#C9A84C)",border:"none",borderRadius:4,padding:"10px 14px",cursor:"pointer",color:"#1A1A1A",fontWeight:700}}>→</button>
+      <div style={{padding:"10px 14px",borderTop:"1px solid #272727",display:"flex",flexDirection:"column",gap:8}}>
+        <textarea value={inp} onChange={e=>setInp(e.target.value)} placeholder="Type your message..." rows={3} style={{...field,resize:"none"}}/>
+        <input type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Your phone number for a call back (optional)" style={field}/>
+        <button disabled={busy||!inp.trim()} onClick={send} style={{background:inp.trim()?"linear-gradient(135deg,#E2C97E,#C9A84C)":"#3A3A3A",border:"none",borderRadius:4,padding:"11px 14px",cursor:inp.trim()?"pointer":"default",color:inp.trim()?"#1A1A1A":"#777",fontWeight:700,fontSize:13}}>{busy?"Sending...":"Send to Christine"}</button>
       </div>
     </div>
   );
@@ -1226,7 +1244,7 @@ function ClientDashboard({onBook,onLogout}) {
           <div style={{width:42,height:42,borderRadius:12,background:"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>✦</div>
           <div style={{flex:1}}>
             <div style={{fontWeight:700,color:"#1A1A1A",fontSize:14}}>Got a question?</div>
-            <div style={{color:"#888",fontSize:12,marginTop:2}}>Chat with our Healthy Hair Club Assistant</div>
+            <div style={{color:"#888",fontSize:12,marginTop:2}}>Message Christine, or ask for a call back within 24 hours</div>
           </div>
           <span style={{color:G.gold,fontSize:22,fontWeight:300}}>{">"}</span>
         </div>
@@ -1866,7 +1884,14 @@ function AdminDashboard({onLogout}) {
   const [loading,setLoading]=useState(true);
 
   React.useEffect(()=>{
+    async function loadMessages(){
+      const {data}=await supabase.from('messages').select('*').order('created_at',{ascending:false}).limit(100);
+      if(data)setInbox(data.map(m=>({id:m.id,client:m.client_name||m.client_email||'Member',email:m.client_email,phone:m.phone,
+        type:m.phone?'Call back':'Message',msg:m.body,read:!!m.read,reply:m.reply,calledBack:m.called_back_at,repliedAt:m.replied_at,
+        time:new Date(m.created_at).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})})));
+    }
     async function loadMembers(){
+      loadMessages();
       try {
         const {data:clients}=await supabase.from('clients').select('*');
         const {data:memberships}=await supabase.from('memberships').select('*');
@@ -2233,31 +2258,54 @@ function AdminDashboard({onLogout}) {
         {tab==="inbox"&&(
           <div>
             <div style={{color:G.goldDk,fontSize:10,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Messages</div>
-            <h2 style={{fontFamily:SR,fontSize:22,color:"#1A1A1A",margin:"0 0 20px",fontStyle:"italic",fontWeight:400}}>Client Messages</h2>
+            <h2 style={{fontFamily:SR,fontSize:22,color:"#1A1A1A",margin:"0 0 6px",fontStyle:"italic",fontWeight:400}}>Client Messages</h2>
+            <p style={{color:"#888",fontSize:12,margin:"0 0 18px"}}>Messages from the Help button. Members who leave a phone number have been told you'll ring them back within 24 hours.</p>
+            {inbox.length===0&&<div style={{background:"#fff",borderRadius:14,padding:20,border:"1px solid "+G.creamDk,color:"#AAA",fontSize:13}}>No messages yet.</div>}
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              {inbox.map(msg=>(
-                <div key={msg.id} style={{background:"#fff",borderRadius:14,padding:20,border:"1px solid "+(msg.read?G.creamDk:G.gold+"55"),borderLeft:"4px solid "+(msg.read?G.creamDk:G.gold)}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+              {inbox.map(msg=>{
+                const save=async(patch,local)=>{const {error}=await supabase.from('messages').update(patch).eq('id',msg.id);if(error){alert('Could not save: '+error.message);return false;}setInbox(p=>p.map(m=>m.id===msg.id?{...m,...local}:m));return true;};
+                const tel=msg.phone?String(msg.phone).replace(/[^\d+]/g,''):'';
+                const needsCall=msg.phone&&!msg.calledBack;
+                return (
+                <div key={msg.id} style={{background:"#fff",borderRadius:14,padding:20,border:"1px solid "+(msg.read?G.creamDk:G.gold+"55"),borderLeft:"4px solid "+(needsCall?G.err:msg.read?G.creamDk:G.gold)}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,gap:10,flexWrap:"wrap"}}>
                     <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                      <div style={{width:40,height:40,borderRadius:"50%",background:G.goldPale,border:"1px solid "+G.gold+"44",display:"flex",alignItems:"center",justifyContent:"center",color:G.goldDk,fontWeight:700,fontSize:16}}>{msg.client[0]}</div>
+                      <div style={{width:40,height:40,borderRadius:"50%",background:G.goldPale,border:"1px solid "+G.gold+"44",display:"flex",alignItems:"center",justifyContent:"center",color:G.goldDk,fontWeight:700,fontSize:16}}>{(msg.client||"?")[0]}</div>
                       <div>
                         <div style={{fontWeight:700,color:"#1A1A1A",fontSize:14}}>{msg.client}</div>
-                        <div style={{display:"flex",gap:6,marginTop:3}}>
-                          <span style={{background:G.goldPale,color:G.goldDk,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,textTransform:"uppercase"}}>{msg.type}</span>
+                        <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap"}}>
+                          <span style={{background:needsCall?G.errBg:G.goldPale,color:needsCall?G.err:G.goldDk,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,textTransform:"uppercase"}}>{needsCall?"Call back needed":msg.type}</span>
                           {!msg.read&&<span style={{background:G.creamLt,color:G.goldDk,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20}}>New</span>}
+                          {msg.calledBack&&<span style={{background:G.okBg,color:G.ok,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20}}>Called back</span>}
+                          {msg.repliedAt&&<span style={{background:G.okBg,color:G.ok,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20}}>Replied</span>}
                         </div>
                       </div>
                     </div>
                     <span style={{color:"#AAA",fontSize:12}}>{msg.time}</span>
                   </div>
-                  <p style={{color:"#555",fontSize:13,lineHeight:1.7,margin:"0 0 14px",padding:"12px 14px",background:G.creamLt,borderRadius:8,borderLeft:"2px solid "+G.gold+"44"}}>{msg.msg}</p>
-                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                    <input value={replyT[msg.id]||""} onChange={e=>{const v=e.target.value;setReplyT(p=>({...p,[msg.id]:v}));}} placeholder="Type your reply..." style={{flex:1,padding:"10px 14px",background:G.creamLt,border:"1px solid "+G.creamDk,borderRadius:8,fontSize:13,fontFamily:BD,color:"#1A1A1A",outline:"none"}}/>
-                    <Btn sm onClick={()=>{setInbox(p=>p.map(m=>m.id===msg.id?{...m,read:true}:m));setReplyT(p=>({...p,[msg.id]:""}));}}>Send</Btn>
-                    {!msg.read&&<button onClick={()=>setInbox(p=>p.map(m=>m.id===msg.id?{...m,read:true}:m))} style={{background:G.creamLt,border:"1px solid "+G.creamDk,borderRadius:8,padding:"9px 14px",cursor:"pointer",color:"#888",fontSize:12}}>Mark read</button>}
+                  <p style={{color:"#555",fontSize:13,lineHeight:1.7,margin:"0 0 12px",padding:"12px 14px",background:G.creamLt,borderRadius:8,borderLeft:"2px solid "+G.gold+"44",whiteSpace:"pre-wrap"}}>{msg.msg}</p>
+                  <div style={{fontSize:13,color:"#555",marginBottom:12,display:"flex",gap:16,flexWrap:"wrap"}}>
+                    {msg.phone&&<span><strong>Phone:</strong> <a href={"tel:"+tel} style={{color:G.goldDk,fontWeight:700}}>{msg.phone}</a></span>}
+                    {msg.email&&<span><strong>Email:</strong> {msg.email}</span>}
                   </div>
+                  {msg.reply&&<div style={{fontSize:12,color:"#666",marginBottom:12,padding:"10px 12px",background:"#F7FBF7",borderRadius:8}}><strong>Your reply:</strong> {msg.reply}</div>}
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                    {msg.phone&&<a href={"tel:"+tel} style={{background:G.okBg,color:G.ok,borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,textDecoration:"none"}}>Call {msg.phone}</a>}
+                    {msg.phone&&!msg.calledBack&&<button onClick={()=>save({called_back_at:new Date().toISOString(),read:true},{calledBack:new Date().toISOString(),read:true})} style={{background:"#fff",border:"1px solid "+G.creamDk,borderRadius:8,padding:"9px 14px",cursor:"pointer",color:G.goldDk,fontSize:12,fontWeight:700}}>Mark as called back</button>}
+                    {!msg.read&&<button onClick={()=>save({read:true},{read:true})} style={{background:G.creamLt,border:"1px solid "+G.creamDk,borderRadius:8,padding:"9px 14px",cursor:"pointer",color:"#888",fontSize:12}}>Mark read</button>}
+                  </div>
+                  {msg.email&&(
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                      <input value={replyT[msg.id]||""} onChange={e=>{const v=e.target.value;setReplyT(p=>({...p,[msg.id]:v}));}} placeholder="Reply by email..." style={{flex:1,padding:"10px 14px",background:G.creamLt,border:"1px solid "+G.creamDk,borderRadius:8,fontSize:13,fontFamily:BD,color:"#1A1A1A",outline:"none"}}/>
+                      <Btn sm onClick={async()=>{const text=(replyT[msg.id]||"").trim();if(!text)return;
+                        const res=await authFetch('/api/notify',{method:'POST',body:JSON.stringify({type:'message_replied',data:{clientEmail:msg.email,clientName:msg.client,preview:text}})});
+                        if(!res.ok){alert('Your reply could not be emailed. Please try again.');return;}
+                        const now=new Date().toISOString();
+                        if(await save({reply:text,replied_at:now,read:true},{reply:text,repliedAt:now,read:true}))setReplyT(p=>({...p,[msg.id]:""}));}}>Send</Btn>
+                    </div>
+                  )}
                 </div>
-              ))}
+              );})}
             </div>
           </div>
         )}
