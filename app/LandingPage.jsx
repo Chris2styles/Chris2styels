@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 
 // Founder photograph: set to e.g. '/photos/christine.jpg' once Christine's original photo is uploaded to public/photos.
 // Left empty, the section shows a clearly marked placeholder (no stock or AI image).
-const FOUNDER_PHOTO = ''
+const FOUNDER_PHOTO = '/photos/christine.jpg'
 
 // Real client reviews, quoted word for word (Treatwell and Google).
 const REVIEWS = [
