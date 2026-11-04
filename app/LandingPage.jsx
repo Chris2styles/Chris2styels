@@ -5,6 +5,11 @@ import { useState, useEffect } from 'react'
 // Left empty, the section shows a clearly marked placeholder (no stock or AI image).
 const FOUNDER_PHOTO = '/photos/christine.jpg'
 
+// Client result photos (Christine's own salon photos).
+const RESULTS = [
+  { src: '/photos/result-full-head-weave.jpg', caption: 'Full head weave' },
+]
+
 // Real client reviews, quoted word for word (Treatwell and Google).
 const REVIEWS = [
   { name: 'Nikki', service: 'Afro Hairdressing', source: 'Treatwell', text: 'Fantastic staff, personable service, uplifting salon atmosphere. From the moment I walk in, always feel welcomed. Chris was attentive and, as usual, provided great service.' },
@@ -347,13 +352,12 @@ export default function LandingPage({onJoin, onSignIn}) {
         <div style={{maxWidth:800,margin:'0 auto',textAlign:'center'}}>
           <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:'uppercase',marginBottom:12}}>Client Results</div>
           <h2 style={{fontFamily:SR,fontSize:28,color:G.ink,fontWeight:400,fontStyle:'italic',margin:'0 0 32px'}}>Real Results From Real Clients</h2>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:16}}>
-            {[1,2,3].map(i=>(
-              <div key={i} style={{background:G.creamLt,borderRadius:12,height:200,display:'flex',alignItems:'center',justifyContent:'center',border:'2px dashed '+G.creamDk,flexDirection:'column',gap:8}}>
-                <span style={{fontSize:28}}>📷</span>
-                <span style={{color:G.smoke,fontSize:12}}>Before & After {i}</span>
-                <span style={{color:G.smoke,fontSize:11}}>Coming soon</span>
-              </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,280px))',justifyContent:'center',gap:16}}>
+            {RESULTS.map((r,i)=>(
+              <figure key={i} style={{margin:0,background:G.creamLt,borderRadius:12,overflow:'hidden',border:'1px solid '+G.creamDk}}>
+                <img src={r.src} alt={r.caption+' by Chris 2 Styles Salon'} loading="lazy" style={{width:'100%',aspectRatio:'4 / 5',objectFit:'cover',display:'block'}}/>
+                <figcaption style={{padding:'12px 14px',color:G.ink,fontSize:13,fontWeight:700}}>{r.caption}</figcaption>
+              </figure>
             ))}
           </div>
           <div style={{marginTop:40}}>
