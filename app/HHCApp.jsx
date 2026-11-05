@@ -355,7 +355,7 @@ const SVCMAP={
 };
 
 const ADDONS=[
-  {id:"a1",cat:"Styling Extras",name:"Silk Press",price:55},
+  {id:"a1",cat:"Styling Extras",name:"Silk Press",price:60},
   {id:"a2",cat:"Styling Extras",name:"Wash and Silk Press",price:74.50},
   {id:"a3",cat:"Styling Extras",name:"Wash Silk Press and Trim",price:92.50},
   {id:"a4",cat:"Styling Extras",name:"Blow Dry",price:15},
