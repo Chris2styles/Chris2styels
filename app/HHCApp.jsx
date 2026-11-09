@@ -1861,7 +1861,7 @@ function AdminLogin({onLogin}) {
           {["Email","Password"].map(label=>(
             <div key={label} style={{marginBottom:16}}>
               <div style={{fontSize:10,color:G.silver,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>{label}</div>
-              <input type={label==="Password"?"password":"email"} defaultValue={label==="Email"?"christine@chris2styles.com":"password"} style={{width:"100%",padding:"13px 16px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:3,boxSizing:"border-box",color:G.white,fontSize:14,fontFamily:BD,outline:"none"}}/>
+              <input type={label==="Password"?"password":"email"} style={{width:"100%",padding:"13px 16px",background:G.graphite,border:"1px solid "+G.muted,borderRadius:3,boxSizing:"border-box",color:G.white,fontSize:14,fontFamily:BD,outline:"none"}}/>
             </div>
           ))}
           <div style={{marginTop:8}}><Btn full onClick={onLogin}>Sign In to Admin</Btn></div>
