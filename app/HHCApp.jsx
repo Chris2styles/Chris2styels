@@ -2008,54 +2008,11 @@ function LaunchContacts(){
         <div style={{height:8,background:G.creamLt,borderRadius:4,marginTop:10,overflow:"hidden"}}><div style={{width:(pool.length?doneN/pool.length*100:0)+"%",height:"100%",background:"linear-gradient(90deg,"+G.goldLt+","+G.gold+")"}}/></div>
       </div>
 
-      {(()=>{
-        // Safety limits so the phone network doesn't block the texts or flag the number as spam:
-        // at most 25 per group, a 15-minute wait after each group, and no more than 200 group texts a day.
-        const LIMIT_DAY=200,GAP_MIN=15;
-        const today=new Date(nowTick).toDateString();
-        const sentToday=list.filter(c=>c.sms_sent_at&&new Date(c.sms_sent_at).toDateString()===today).length;
-        const lastSent=list.reduce((m,c)=>c.sms_sent_at&&new Date(c.sms_sent_at).getTime()>m?new Date(c.sms_sent_at).getTime():m,0);
-        const recent=list.filter(c=>c.sms_sent_at&&nowTick-new Date(c.sms_sent_at).getTime()<GAP_MIN*60000).length;
-        const waitMin=recent>=5?Math.max(1,Math.ceil((lastSent+GAP_MIN*60000-nowTick)/60000)):0;
-        const leftToday=Math.max(0,LIMIT_DAY-sentToday);
-        const size=Math.min(batchSize,leftToday);
-        const next=who==="stopped"||waitMin>0?[]:pool.filter(c=>!sent(c)).slice(0,size);
-        const groupMsg=lcFill(msg,{name:""});
-        // Android (Google/Samsung Messages) separates several numbers with ";", iPhone with ",".
-        const isAndroid=typeof navigator!=="undefined"&&/android/i.test(navigator.userAgent);
-        const href=isAndroid
-          ?"sms:"+next.map(c=>c.phone).join(";")+"?body="+encodeURIComponent(groupMsg)
-          :"sms:/open?addresses="+next.map(c=>c.phone).join(",")+"&body="+encodeURIComponent(groupMsg);
-        return (
-          <div style={{...box,border:"1px solid "+G.gold,background:G.goldPale}}>
-            <div style={{fontWeight:700,color:"#1A1A1A",fontSize:15,marginBottom:4}}>Text several at once</div>
-            <p style={{color:"#6B5A2A",fontSize:12,lineHeight:1.6,margin:"0 0 10px"}}><strong>Step 1:</strong> choose how many below. <strong>Step 2:</strong> tap the big gold button. Your Messages app opens with the next {next.length} clients already added and the message typed (it says "Hi there" instead of each name). <strong>Step 3:</strong> press send in Messages.</p>
-            <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-              {[2,10,25].map(n=>chip(batchSize===n,n===2?"2 (test)":String(n),()=>setBatchSize(n)))}
-            </div>
-            <button onClick={()=>setBatchInfo(!batchInfo)} style={{background:"none",border:"none",color:G.err,fontSize:12,fontWeight:700,padding:0,marginBottom:10,cursor:"pointer",textAlign:"left"}}>⚠️ Important: check this setting on your Samsung first {batchInfo?"▲":"▼"}</button>
-            {batchInfo&&<div style={{background:"#fff",borderRadius:8,padding:"10px 12px",fontSize:12,color:"#555",lineHeight:1.6,marginBottom:10}}>
-              So each client gets their <strong>own private text</strong> (and nobody sees anyone else's number or replies), group conversations must be <strong>off</strong>:<br/>
-              Messages app → ⋮ (three dots) → <strong>Settings</strong> → <strong>More settings</strong> → <strong>Multimedia messages</strong> (or "Group conversations") → turn <strong>Group conversations OFF</strong>.<br/>
-              Then send a <strong>2 (test)</strong> batch and check with those 2 clients, or test with your own numbers, before doing 50.
-            </div>}
-            <div style={{background:"#fff",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#6B5A2A",lineHeight:1.6,marginBottom:10}}>
-              🛡️ <strong>Phone network safety:</strong> max 25 per group, wait 15 minutes between groups, up to {LIMIT_DAY} a day. Sending faster gets texts blocked ("not sent") and can get your number flagged as spam. Sent today: <strong>{sentToday}</strong>.
-            </div>
-            {waitMin>0?<div style={{textAlign:"center",background:"#fff",border:"1px dashed "+G.gold,borderRadius:8,padding:"13px 0",fontSize:14,fontWeight:700,color:G.goldDk}}>Next group in about {waitMin} minute{waitMin===1?"":"s"} ⏳</div>:
-            leftToday===0?<div style={{textAlign:"center",background:"#fff",border:"1px dashed "+G.gold,borderRadius:8,padding:"13px 0",fontSize:14,fontWeight:700,color:G.goldDk}}>That's {LIMIT_DAY} for today. Carry on tomorrow 💛</div>:
-            next.length===0?<div style={{color:"#888",fontSize:13}}>Everyone in this list has been messaged. 🎉</div>:
-            <a href={href} onClick={()=>{const ids=next.map(c=>c.id);setLastBatch(ids);markBatch(ids,true);}}
-              style={{display:"block",textAlign:"center",textDecoration:"none",background:"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",color:"#1A1A1A",borderRadius:8,padding:"13px 0",fontSize:14,fontWeight:700}}>
-              Step 2: Text the next {next.length} in one go
-            </a>}
-            {lastBatch&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,fontSize:12,color:"#6B5A2A"}}>
-              <span>Last group: {lastBatch.length} ticked as texted.</span>
-              <button onClick={()=>{markBatch(lastBatch,false);setLastBatch(null);}} style={{background:"none",border:"none",color:G.goldDk,fontSize:12,fontWeight:700,textDecoration:"underline",cursor:"pointer"}}>Undo (didn't send)</button>
-            </div>}
-          </div>
-        );
-      })()}
+      {/* Group texting removed 9 Nov 2026: on Android with RCS, several recipients at once create a group chat
+          (everyone sees each other's numbers). Messages are sent one person at a time only. */}
+      <div style={{...box,border:"1px solid "+G.gold,background:G.goldPale,fontSize:12,color:"#6B5A2A",lineHeight:1.6}}>
+        🛡️ Send one client at a time with the <strong>Text</strong> or <strong>WhatsApp</strong> buttons below. Take short breaks, and keep to about <strong>100–150 texts a day</strong> so the phone network doesn't block them.
+      </div>
 
       <div style={box}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
