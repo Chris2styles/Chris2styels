@@ -2009,11 +2009,15 @@ function LaunchContacts(){
       {(()=>{
         const next=who==="stopped"?[]:pool.filter(c=>!sent(c)).slice(0,batchSize);
         const groupMsg=lcFill(msg,{name:""});
-        const href="sms:"+next.map(c=>c.phone).join(",")+"?&body="+encodeURIComponent(groupMsg);
+        // Android (Google/Samsung Messages) separates several numbers with ";", iPhone with ",".
+        const isAndroid=typeof navigator!=="undefined"&&/android/i.test(navigator.userAgent);
+        const href=isAndroid
+          ?"sms:"+next.map(c=>c.phone).join(";")+"?body="+encodeURIComponent(groupMsg)
+          :"sms:/open?addresses="+next.map(c=>c.phone).join(",")+"&body="+encodeURIComponent(groupMsg);
         return (
           <div style={{...box,border:"1px solid "+G.gold,background:G.goldPale}}>
             <div style={{fontWeight:700,color:"#1A1A1A",fontSize:15,marginBottom:4}}>Text several at once</div>
-            <p style={{color:"#6B5A2A",fontSize:12,lineHeight:1.6,margin:"0 0 10px"}}>Opens one text with the next {next.length} clients already added. The message says "Hi there" instead of each name.</p>
+            <p style={{color:"#6B5A2A",fontSize:12,lineHeight:1.6,margin:"0 0 10px"}}><strong>Step 1:</strong> choose how many below. <strong>Step 2:</strong> tap the big gold button. Your Messages app opens with the next {next.length} clients already added and the message typed (it says "Hi there" instead of each name). <strong>Step 3:</strong> press send in Messages.</p>
             <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
               {[2,10,25,50].map(n=>chip(batchSize===n,n===2?"2 (test)":String(n),()=>setBatchSize(n)))}
             </div>
@@ -2026,7 +2030,7 @@ function LaunchContacts(){
             {next.length===0?<div style={{color:"#888",fontSize:13}}>Everyone in this list has been messaged. 🎉</div>:
             <a href={href} onClick={()=>{const ids=next.map(c=>c.id);setLastBatch(ids);markBatch(ids,true);}}
               style={{display:"block",textAlign:"center",textDecoration:"none",background:"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",color:"#1A1A1A",borderRadius:8,padding:"13px 0",fontSize:14,fontWeight:700}}>
-              Text the next {next.length} in one go
+              Step 2: Text the next {next.length} in one go
             </a>}
             {lastBatch&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,fontSize:12,color:"#6B5A2A"}}>
               <span>Last group: {lastBatch.length} ticked as texted.</span>
