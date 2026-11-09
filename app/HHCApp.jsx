@@ -1922,11 +1922,14 @@ function LaunchContacts(){
   const [msg,setMsg]=useState(()=>{try{return localStorage.getItem("hhc_launch_msg")||LAUNCH_MSG_DEFAULT;}catch(e){return LAUNCH_MSG_DEFAULT;}});
   const [editMsg,setEditMsg]=useState(false);
   const [importing,setImporting]=useState("");
+  const [batchSize,setBatchSize]=useState(50);
+  const [lastBatch,setLastBatch]=useState(null); // ids of the last group text, so it can be undone
+  const [batchInfo,setBatchInfo]=useState(false);
 
   async function load(){
     setErr("");const all=[];
     for(let from=0;;from+=1000){
-      const {data,error}=await supabase.from("launch_contacts").select("id,name,phone,opt_in,bookings,sms_sent_at,wa_sent_at").order("name",{ascending:true,nullsFirst:false}).range(from,from+999);
+      const {data,error}=await supabase.from("launch_contacts").select("id,name,phone,opt_in,bookings,sms_sent_at,wa_sent_at,do_not_contact").order("name",{ascending:true,nullsFirst:false}).range(from,from+999);
       if(error){setErr("Could not load contacts: "+error.message);setList([]);return;}
       all.push(...data);if(data.length<1000)break;
     }
@@ -1964,9 +1967,23 @@ function LaunchContacts(){
     if(error)setErr("Could not save: "+error.message);
   }
 
+  async function setStop(c,on){
+    if(on&&!window.confirm("Mark "+(c.name||c.phone)+" as STOP? They'll be taken off your list and never included in group texts."))return;
+    setList(l=>l.map(x=>x.id===c.id?{...x,do_not_contact:on}:x));
+    const {error}=await supabase.from("launch_contacts").update({do_not_contact:on,stopped_at:on?new Date().toISOString():null}).eq("id",c.id);
+    if(error)setErr("Could not save: "+error.message);
+  }
+  async function markBatch(ids,on=true){
+    const t=on?new Date().toISOString():null;
+    setList(l=>l.map(x=>ids.includes(x.id)?{...x,sms_sent_at:t}:x));
+    const {error}=await supabase.from("launch_contacts").update({sms_sent_at:t}).in("id",ids);
+    if(error)setErr("Could not save: "+error.message);
+  }
+
   if(!list)return <div style={{color:"#999",fontSize:13}}>Loading contacts...</div>;
   const sent=c=>!!(c.sms_sent_at||c.wa_sent_at);
-  const pool=list.filter(c=>who==="all"||(who==="optin"?c.opt_in:!c.opt_in));
+  const stopped=list.filter(c=>c.do_not_contact);
+  const pool=who==="stopped"?stopped:list.filter(c=>!c.do_not_contact&&(who==="all"||(who==="optin"?c.opt_in:!c.opt_in)));
   const ql=q.trim().toLowerCase(),qd=q.replace(/\D/g,"");
   // A search looks through everyone, whatever filters are selected.
   const shown=(ql||qd)?list.filter(c=>(c.name||"").toLowerCase().includes(ql)||(qd.length>=3&&c.phone.includes(qd.replace(/^44/,"0")))):pool.filter(c=>show==="all"||(show==="sent"?sent(c):!sent(c)));
@@ -1989,6 +2006,36 @@ function LaunchContacts(){
         <div style={{height:8,background:G.creamLt,borderRadius:4,marginTop:10,overflow:"hidden"}}><div style={{width:(pool.length?doneN/pool.length*100:0)+"%",height:"100%",background:"linear-gradient(90deg,"+G.goldLt+","+G.gold+")"}}/></div>
       </div>
 
+      {(()=>{
+        const next=who==="stopped"?[]:pool.filter(c=>!sent(c)).slice(0,batchSize);
+        const groupMsg=lcFill(msg,{name:""});
+        const href="sms:"+next.map(c=>c.phone).join(",")+"?&body="+encodeURIComponent(groupMsg);
+        return (
+          <div style={{...box,border:"1px solid "+G.gold,background:G.goldPale}}>
+            <div style={{fontWeight:700,color:"#1A1A1A",fontSize:15,marginBottom:4}}>Text several at once</div>
+            <p style={{color:"#6B5A2A",fontSize:12,lineHeight:1.6,margin:"0 0 10px"}}>Opens one text with the next {next.length} clients already added. The message says "Hi there" instead of each name.</p>
+            <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+              {[2,10,25,50].map(n=>chip(batchSize===n,n===2?"2 (test)":String(n),()=>setBatchSize(n)))}
+            </div>
+            <button onClick={()=>setBatchInfo(!batchInfo)} style={{background:"none",border:"none",color:G.err,fontSize:12,fontWeight:700,padding:0,marginBottom:10,cursor:"pointer",textAlign:"left"}}>⚠️ Important: check this setting on your Samsung first {batchInfo?"▲":"▼"}</button>
+            {batchInfo&&<div style={{background:"#fff",borderRadius:8,padding:"10px 12px",fontSize:12,color:"#555",lineHeight:1.6,marginBottom:10}}>
+              So each client gets their <strong>own private text</strong> (and nobody sees anyone else's number or replies), group conversations must be <strong>off</strong>:<br/>
+              Messages app → ⋮ (three dots) → <strong>Settings</strong> → <strong>More settings</strong> → <strong>Multimedia messages</strong> (or "Group conversations") → turn <strong>Group conversations OFF</strong>.<br/>
+              Then send a <strong>2 (test)</strong> batch and check with those 2 clients, or test with your own numbers, before doing 50.
+            </div>}
+            {next.length===0?<div style={{color:"#888",fontSize:13}}>Everyone in this list has been messaged. 🎉</div>:
+            <a href={href} onClick={()=>{const ids=next.map(c=>c.id);setLastBatch(ids);markBatch(ids,true);}}
+              style={{display:"block",textAlign:"center",textDecoration:"none",background:"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",color:"#1A1A1A",borderRadius:8,padding:"13px 0",fontSize:14,fontWeight:700}}>
+              Text the next {next.length} in one go
+            </a>}
+            {lastBatch&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,fontSize:12,color:"#6B5A2A"}}>
+              <span>Last group: {lastBatch.length} ticked as texted.</span>
+              <button onClick={()=>{markBatch(lastBatch,false);setLastBatch(null);}} style={{background:"none",border:"none",color:G.goldDk,fontSize:12,fontWeight:700,textDecoration:"underline",cursor:"pointer"}}>Undo (didn't send)</button>
+            </div>}
+          </div>
+        );
+      })()}
+
       <div style={box}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
           <div style={{fontWeight:700,color:"#1A1A1A",fontSize:14}}>Your message</div>
@@ -2008,6 +2055,7 @@ function LaunchContacts(){
         {chip(who==="optin","Opted in",()=>{setWho("optin");setLimit(50);})}
         {chip(who==="other","Not opted in",()=>{setWho("other");setLimit(50);})}
         {chip(who==="all","Everyone",()=>{setWho("all");setLimit(50);})}
+        {chip(who==="stopped","Said STOP ("+stopped.length+")",()=>{setWho("stopped");setShow("all");setLimit(50);})}
       </div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
         {chip(show==="todo","Not sent yet",()=>{setShow("todo");setLimit(50);})}
@@ -2029,11 +2077,18 @@ function LaunchContacts(){
               <div style={{color:"#999",fontSize:12,whiteSpace:"nowrap"}}>{c.phone.replace(/^(\d{5})(\d{6})$/,"$1 $2")}</div>
             </div>
             <div style={{color:"#AAA",fontSize:11,marginTop:2}}>{c.bookings} booking{c.bookings===1?"":"s"}{c.opt_in?"":" · not opted in"}</div>
+            {c.do_not_contact?(
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
+                <span style={{background:G.errBg,color:G.err,borderRadius:4,padding:"4px 8px",fontSize:11,fontWeight:700}}>Said STOP: do not message</span>
+                <button onClick={()=>setStop(c,false)} style={{background:"none",border:"none",color:"#AAA",fontSize:11,textDecoration:"underline",cursor:"pointer"}}>Put back on list</button>
+              </div>
+            ):(
             <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap",alignItems:"center"}}>
               <a href={sms} onClick={()=>mark(c,"sms_sent_at")} style={{flex:1,minWidth:110,textAlign:"center",textDecoration:"none",background:c.sms_sent_at?"#fff":"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",border:c.sms_sent_at?"1px solid "+G.creamDk:"none",color:c.sms_sent_at?"#888":"#1A1A1A",borderRadius:8,padding:"10px 0",fontSize:13,fontWeight:700}}>{c.sms_sent_at?"Texted "+lcWhen(c.sms_sent_at)+" ✓":"Text"}</a>
               <a href={wa} target="_blank" rel="noopener noreferrer" onClick={()=>mark(c,"wa_sent_at")} style={{flex:1,minWidth:110,textAlign:"center",textDecoration:"none",background:c.wa_sent_at?"#fff":"#25D366",border:c.wa_sent_at?"1px solid "+G.creamDk:"none",color:c.wa_sent_at?"#888":"#fff",borderRadius:8,padding:"10px 0",fontSize:13,fontWeight:700}}>{c.wa_sent_at?"WhatsApp "+lcWhen(c.wa_sent_at)+" ✓":"WhatsApp"}</a>
               {sent(c)&&<button onClick={()=>{mark(c,"sms_sent_at",false);mark(c,"wa_sent_at",false);}} style={{background:"none",border:"none",color:"#AAA",fontSize:11,textDecoration:"underline",cursor:"pointer"}}>Undo</button>}
-            </div>
+              <button onClick={()=>setStop(c,true)} style={{background:"none",border:"none",color:G.err,fontSize:11,textDecoration:"underline",cursor:"pointer"}}>Said STOP</button>
+            </div>)}
           </div>
         );
       })}
