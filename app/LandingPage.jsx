@@ -58,6 +58,9 @@ const PKGS = [
   },
 ]
 
+// Quick links to each part of the landing page (nav bar and the "There's more below" prompt).
+const QUICK_LINKS = [['Packages','memberships'],['Treatments','treatments'],['My Story','founder'],['Results','results'],['Reviews','reviews'],['FAQs','faqs']]
+
 const TREATS = [
   {name:"Sustenance",icon:"💧",desc:"Designed to support moisture, softness and manageability as part of an ongoing healthy hair maintenance routine."},
   {name:"Olaplex",icon:"🔗",desc:"Used where appropriate to support the condition and structure of hair affected by chemical processing, colouring, heat or styling."},
@@ -124,6 +127,12 @@ export default function LandingPage({onJoin, onSignIn}) {
   useUTM()
   const [openFaq, setOpenFaq] = useState(null)
   const [storyOpen, setStoryOpen] = useState(false)
+  const [openTreat, setOpenTreat] = useState(null)
+  const jump = (id, label) => { trackEvent('quick_link', { to: label }); const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+  const toggleTreat = (i) => {
+    if (openTreat === i) { setOpenTreat(null); requestAnimationFrame(() => document.getElementById('treat-' + i)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })) }
+    else { trackEvent('treatment_details', { name: TREATS[i].name }); setOpenTreat(i) }
+  }
 
   function handleChoose(pkgId) {
     trackEvent('package_selected', {package: pkgId})
@@ -134,7 +143,7 @@ export default function LandingPage({onJoin, onSignIn}) {
     <div style={{fontFamily:BD, background:G.cream, minHeight:'100vh'}}>
 
       {/* NAV */}
-      <nav style={{position:'sticky',top:0,zIndex:100,background:'rgba(8,8,8,0.96)',backdropFilter:'blur(10px)',borderBottom:'1px solid '+G.muted,padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      <nav style={{position:'sticky',top:0,zIndex:100,background:'rgba(8,8,8,0.96)',backdropFilter:'blur(10px)',borderBottom:'1px solid '+G.muted,padding:'14px 20px 0',display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center'}}>
         <div>
           <div style={{fontFamily:DP,fontSize:13,color:G.white,letterSpacing:2,textTransform:'uppercase',lineHeight:1}}>Chris 2 Styles</div>
           <div style={{fontFamily:BD,fontSize:10,color:G.gold,letterSpacing:3,textTransform:'uppercase',marginTop:2}}>Healthy Hair Club</div>
@@ -143,6 +152,12 @@ export default function LandingPage({onJoin, onSignIn}) {
           style={{background:'transparent',border:'1px solid '+G.gold,color:G.gold,borderRadius:4,padding:'8px 16px',fontSize:12,fontFamily:DP,fontWeight:700,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer'}}>
           Sign In
         </button>
+        <div aria-label="Page sections" style={{width:'100%',display:'flex',gap:6,overflowX:'auto',whiteSpace:'nowrap',padding:'12px 0 10px',scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
+          {QUICK_LINKS.map(([label,id])=>(
+            <button key={id} type="button" onClick={()=>jump(id,label)}
+              style={{flexShrink:0,background:'rgba(201,168,76,0.10)',border:'1px solid rgba(201,168,76,0.35)',color:G.goldLt,borderRadius:20,padding:'6px 13px',fontSize:12,fontWeight:600,cursor:'pointer'}}>{label}</button>
+          ))}
+        </div>
       </nav>
 
       {/* HERO */}
@@ -208,7 +223,7 @@ export default function LandingPage({onJoin, onSignIn}) {
       </section>
 
       {/* MEMBERSHIPS */}
-      <section id="memberships" style={{background:G.black,padding:'70px 20px'}}>
+      <section id="memberships" style={{background:G.black,padding:'70px 20px',scrollMarginTop:110}}>
         <div style={{maxWidth:960,margin:'0 auto'}}>
           <div style={{textAlign:'center',marginBottom:48}}>
             <div style={{color:G.gold,fontSize:10,letterSpacing:4,textTransform:'uppercase',marginBottom:12}}>Choose Your Membership</div>
@@ -257,6 +272,17 @@ export default function LandingPage({onJoin, onSignIn}) {
               )
             })}
           </div>
+          <div style={{marginTop:36,textAlign:'center',borderTop:'1px solid rgba(201,168,76,0.25)',paddingTop:28}}>
+            <div style={{color:G.gold,fontSize:13,fontWeight:700,letterSpacing:3,textTransform:'uppercase'}}>There's more below</div>
+            <div aria-hidden="true" style={{color:G.gold,fontSize:26,lineHeight:1,margin:'6px 0 14px',animation:'hhcBounce 1.6s ease-in-out infinite'}}>↓</div>
+            <div style={{display:'flex',flexWrap:'wrap',justifyContent:'center',gap:8}}>
+              {QUICK_LINKS.filter(([,id])=>id!=='memberships').map(([label,id])=>(
+                <button key={id} type="button" onClick={()=>jump(id,label)}
+                  style={{background:'transparent',border:'1px solid '+G.gold,color:G.goldLt,borderRadius:20,padding:'8px 15px',fontSize:13,fontWeight:600,cursor:'pointer'}}>{label}</button>
+              ))}
+            </div>
+            <style>{'@keyframes hhcBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}@media (prefers-reduced-motion:reduce){[style*=hhcBounce]{animation:none!important}}'}</style>
+          </div>
           <p style={{textAlign:'center',color:'rgba(255,255,255,0.3)',fontSize:12,marginTop:24}}>
             By joining you agree to our <span style={{color:G.gold,cursor:'pointer'}} onClick={()=>document.getElementById('faqs').scrollIntoView({behavior:'smooth'})}>membership terms</span>. Cancel anytime.
           </p>
@@ -264,7 +290,7 @@ export default function LandingPage({onJoin, onSignIn}) {
       </section>
 
       {/* TREATMENTS */}
-      <section style={{background:G.white,padding:'64px 20px'}}>
+      <section id="treatments" style={{background:G.white,padding:'64px 20px',scrollMarginTop:110}}>
         <div style={{maxWidth:760,margin:'0 auto'}}>
           <div style={{textAlign:'center',marginBottom:40}}>
             <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:'uppercase',marginBottom:12}}>Professional Care</div>
@@ -273,10 +299,16 @@ export default function LandingPage({onJoin, onSignIn}) {
           </div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:16,marginBottom:24}}>
             {TREATS.map((t,i)=>(
-              <div key={i} style={{background:G.creamLt,borderRadius:12,padding:'24px 20px',border:'1px solid '+G.creamDk}}>
-                <div style={{fontSize:28,marginBottom:12}}>{t.icon}</div>
-                <div style={{fontWeight:700,color:G.ink,fontSize:16,marginBottom:8}}>{t.name}</div>
-                <p style={{color:G.dim,fontSize:13,lineHeight:1.7,margin:0}}>{t.desc}</p>
+              <div key={i} id={'treat-'+i} style={{background:G.creamLt,borderRadius:12,padding:'20px 20px',border:'1px solid '+(openTreat===i?G.gold:G.creamDk),scrollMarginTop:120,alignSelf:'start'}}>
+                <div style={{display:'flex',alignItems:'center',gap:12}}>
+                  <div style={{fontSize:26}}>{t.icon}</div>
+                  <div style={{fontWeight:700,color:G.ink,fontSize:16}}>{t.name}</div>
+                </div>
+                {openTreat===i&&<p id={'treat-more-'+i} style={{color:G.dim,fontSize:13,lineHeight:1.7,margin:'12px 0 0'}}>{t.desc}</p>}
+                <button type="button" aria-expanded={openTreat===i} aria-controls={'treat-more-'+i} onClick={()=>toggleTreat(i)}
+                  style={{marginTop:14,background:'transparent',border:'1px solid '+G.gold,color:G.goldDk,borderRadius:4,padding:'8px 14px',fontSize:11,fontFamily:DP,fontWeight:700,letterSpacing:1.2,textTransform:'uppercase',cursor:'pointer'}}>
+                  {openTreat===i?'Show Less':'See Details'}
+                </button>
               </div>
             ))}
           </div>
@@ -289,7 +321,7 @@ export default function LandingPage({onJoin, onSignIn}) {
       </section>
 
       {/* FOUNDER — approved story, exact wording */}
-      <section id="founder" style={{background:G.creamLt,padding:'72px 20px'}}>
+      <section id="founder" style={{background:G.creamLt,padding:'72px 20px',scrollMarginTop:110}}>
         <div style={{maxWidth:960,margin:'0 auto'}}>
           <div style={{textAlign:'center',marginBottom:40}}>
             <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:'uppercase',marginBottom:12}}>Our Founder</div>
@@ -351,7 +383,7 @@ export default function LandingPage({onJoin, onSignIn}) {
       </section>
 
       {/* SOCIAL PROOF PLACEHOLDER */}
-      <section style={{background:G.white,padding:'64px 20px'}}>
+      <section id="results" style={{background:G.white,padding:'64px 20px',scrollMarginTop:110}}>
         <div style={{maxWidth:800,margin:'0 auto',textAlign:'center'}}>
           <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:'uppercase',marginBottom:12}}>Client Results</div>
           <h2 style={{fontFamily:SR,fontSize:28,color:G.ink,fontWeight:400,fontStyle:'italic',margin:'0 0 32px'}}>Real Results From Real Clients</h2>
@@ -363,7 +395,7 @@ export default function LandingPage({onJoin, onSignIn}) {
               </figure>
             ))}
           </div>
-          <div style={{marginTop:40}}>
+          <div id="reviews" style={{marginTop:40,scrollMarginTop:110}}>
             <div style={{display:'flex',justifyContent:'center',gap:4,marginBottom:6}}>
               {[1,2,3,4,5].map(i=><span key={i} style={{color:G.gold,fontSize:20}}>★</span>)}
             </div>
@@ -407,7 +439,7 @@ export default function LandingPage({onJoin, onSignIn}) {
       </section>
 
       {/* FAQS */}
-      <section id="faqs" style={{background:G.white,padding:'64px 20px'}}>
+      <section id="faqs" style={{background:G.white,padding:'64px 20px',scrollMarginTop:110}}>
         <div style={{maxWidth:680,margin:'0 auto'}}>
           <div style={{textAlign:'center',marginBottom:40}}>
             <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:'uppercase',marginBottom:12}}>Questions</div>
