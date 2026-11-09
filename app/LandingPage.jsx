@@ -128,7 +128,18 @@ export default function LandingPage({onJoin, onSignIn}) {
   const [openFaq, setOpenFaq] = useState(null)
   const [storyOpen, setStoryOpen] = useState(false)
   const [openTreat, setOpenTreat] = useState(null)
-  const jump = (id, label) => { trackEvent('quick_link', { to: label }); const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+  const [faqsOpen, setFaqsOpen] = useState(false)
+  const [stepsOpen, setStepsOpen] = useState(false)
+  const foldBtn = (open, onClick, more, controls) => (
+    <div style={{textAlign:'center'}}>
+      <button type="button" aria-expanded={open} aria-controls={controls} onClick={onClick}
+        style={{background:'transparent',border:'1px solid '+G.gold,color:G.goldDk,borderRadius:4,padding:'12px 22px',fontSize:12,fontFamily:DP,fontWeight:700,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer'}}>
+        {open?'Show Less':more}
+      </button>
+    </div>
+  )
+  const closeAndReturn = (setter, id) => { setter(false); requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })) }
+  const jump = (id, label) => { trackEvent('quick_link', { to: label }); if (id === 'faqs') setFaqsOpen(true); const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
   const toggleTreat = (i) => {
     if (openTreat === i) { setOpenTreat(null); requestAnimationFrame(() => document.getElementById('treat-' + i)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })) }
     else { trackEvent('treatment_details', { name: TREATS[i].name }); setOpenTreat(i) }
@@ -284,7 +295,7 @@ export default function LandingPage({onJoin, onSignIn}) {
             <style>{'@keyframes hhcBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}@media (prefers-reduced-motion:reduce){[style*=hhcBounce]{animation:none!important}}'}</style>
           </div>
           <p style={{textAlign:'center',color:'rgba(255,255,255,0.3)',fontSize:12,marginTop:24}}>
-            By joining you agree to our <span style={{color:G.gold,cursor:'pointer'}} onClick={()=>document.getElementById('faqs').scrollIntoView({behavior:'smooth'})}>membership terms</span>. Cancel anytime.
+            By joining you agree to our <span style={{color:G.gold,cursor:'pointer'}} onClick={()=>jump('faqs','Terms')}>membership terms</span>. Cancel anytime.
           </p>
         </div>
       </section>
@@ -416,13 +427,14 @@ export default function LandingPage({onJoin, onSignIn}) {
       </section>
 
       {/* HOW IT WORKS */}
-      <section style={{background:G.creamLt,padding:'64px 20px'}}>
+      <section id="how-it-works" style={{background:G.creamLt,padding:'56px 20px',scrollMarginTop:110}}>
         <div style={{maxWidth:700,margin:'0 auto'}}>
-          <div style={{textAlign:'center',marginBottom:40}}>
+          <div style={{textAlign:'center',marginBottom:24}}>
             <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:'uppercase',marginBottom:12}}>Simple Process</div>
             <h2 style={{fontFamily:SR,fontSize:28,color:G.ink,fontWeight:400,fontStyle:'italic',margin:0}}>How It Works</h2>
           </div>
-          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          {foldBtn(stepsOpen,()=>{if(stepsOpen)closeAndReturn(setStepsOpen,'how-it-works');else{trackEvent('how_it_works_open');setStepsOpen(true)}},'See How It Works','how-it-works-steps')}
+          {stepsOpen&&<div id="how-it-works-steps" style={{display:'flex',flexDirection:'column',gap:16,margin:'24px 0'}}>
             {STEPS.map((s,i)=>(
               <div key={i} style={{background:G.white,borderRadius:12,padding:'20px 24px',display:'flex',gap:20,alignItems:'flex-start',border:'1px solid '+G.creamDk}}>
                 <div style={{width:44,height:44,borderRadius:'50%',background:'linear-gradient(135deg,'+G.goldLt+','+G.gold+')',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontFamily:DP,fontWeight:700,fontSize:18,color:G.black}}>
@@ -434,17 +446,20 @@ export default function LandingPage({onJoin, onSignIn}) {
                 </div>
               </div>
             ))}
-          </div>
+          </div>}
+          {stepsOpen&&foldBtn(true,()=>closeAndReturn(setStepsOpen,'how-it-works'),'','how-it-works-steps')}
         </div>
       </section>
 
       {/* FAQS */}
       <section id="faqs" style={{background:G.white,padding:'64px 20px',scrollMarginTop:110}}>
         <div style={{maxWidth:680,margin:'0 auto'}}>
-          <div style={{textAlign:'center',marginBottom:40}}>
+          <div style={{textAlign:'center',marginBottom:24}}>
             <div style={{color:G.goldDk,fontSize:10,letterSpacing:4,textTransform:'uppercase',marginBottom:12}}>Questions</div>
             <h2 style={{fontFamily:SR,fontSize:28,color:G.ink,fontWeight:400,fontStyle:'italic',margin:0}}>Frequently Asked Questions</h2>
           </div>
+          {foldBtn(faqsOpen,()=>{if(faqsOpen)closeAndReturn(setFaqsOpen,'faqs');else{trackEvent('faqs_open');setFaqsOpen(true)}},'View All '+FAQS.length+' Questions','faq-list')}
+          {faqsOpen&&<div id="faq-list" style={{margin:'24px 0'}}>
           {FAQS.map((faq,i)=>(
             <div key={i} style={{borderBottom:'1px solid '+G.creamDk,overflow:'hidden'}}>
               <div onClick={()=>setOpenFaq(openFaq===i?null:i)}
@@ -459,6 +474,8 @@ export default function LandingPage({onJoin, onSignIn}) {
               )}
             </div>
           ))}
+          </div>}
+          {faqsOpen&&foldBtn(true,()=>closeAndReturn(setFaqsOpen,'faqs'),'','faq-list')}
         </div>
       </section>
 
