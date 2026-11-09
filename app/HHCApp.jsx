@@ -1968,7 +1968,8 @@ function LaunchContacts(){
   const sent=c=>!!(c.sms_sent_at||c.wa_sent_at);
   const pool=list.filter(c=>who==="all"||(who==="optin"?c.opt_in:!c.opt_in));
   const ql=q.trim().toLowerCase(),qd=q.replace(/\D/g,"");
-  const shown=pool.filter(c=>(show==="all"||(show==="sent"?sent(c):!sent(c)))&&(!ql||(c.name||"").toLowerCase().includes(ql)||(qd&&c.phone.includes(qd))));
+  // A search looks through everyone, whatever filters are selected.
+  const shown=(ql||qd)?list.filter(c=>(c.name||"").toLowerCase().includes(ql)||(qd.length>=3&&c.phone.includes(qd.replace(/^44/,"0")))):pool.filter(c=>show==="all"||(show==="sent"?sent(c):!sent(c)));
   const doneN=pool.filter(sent).length;
   const chip=(on,label,fn)=><button onClick={fn} style={{background:on?G.goldPale:"#fff",border:"1px solid "+(on?G.gold:G.creamDk),color:on?G.goldDk:"#777",borderRadius:20,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>{label}</button>;
   const box={background:"#fff",borderRadius:14,border:"1px solid "+G.creamDk,padding:"16px 18px",marginBottom:14};
@@ -1977,7 +1978,7 @@ function LaunchContacts(){
     <div>
       <div style={{color:G.goldDk,fontSize:10,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Launch</div>
       <h2 style={{fontFamily:SR,fontSize:22,color:"#1A1A1A",margin:"0 0 6px",fontStyle:"italic",fontWeight:400}}>Launch Contacts</h2>
-      <p style={{color:"#888",fontSize:12,margin:"0 0 16px",lineHeight:1.6}}>Open this page on your phone. Tap <strong>Text</strong> or <strong>WhatsApp</strong> next to a client: the message opens ready on your phone, you press send, and they're ticked off here.</p>
+      <p style={{color:"#888",fontSize:12,margin:"0 0 16px",lineHeight:1.6}}>Open this page on your phone. Tap <strong>Text</strong> or <strong>WhatsApp</strong> under a client's name. Your Messages or WhatsApp app opens with the message already typed. Nothing is sent until you press the send arrow there. Then come back here for the next client.</p>
       {err&&<div style={{background:G.errBg,color:G.err,borderRadius:8,padding:"10px 12px",fontSize:12,marginBottom:12}}>{err}</div>}
 
       <div style={box}>
@@ -2015,7 +2016,8 @@ function LaunchContacts(){
       </div>
       <input value={q} onChange={e=>{setQ(e.target.value);setLimit(50);}} placeholder="Search name or number" style={{width:"100%",boxSizing:"border-box",border:"1px solid "+G.creamDk,borderRadius:8,padding:"10px 12px",fontSize:13,marginBottom:12}}/>
 
-      {shown.length===0&&<div style={{...box,color:"#AAA",fontSize:13}}>{list.length===0?"No contacts yet. Use Import below to add your Treatwell export.":"Nobody here."}</div>}
+      {(ql||qd)&&<div style={{color:"#888",fontSize:12,margin:"-4px 0 10px"}}>{shown.length} found for "{q}" (searching everyone)</div>}
+      {shown.length===0&&<div style={{...box,color:"#AAA",fontSize:13}}>{list.length===0?"No contacts yet. Use Import below to add your Treatwell export.":(ql||qd)?"No client with that name or number. Try just the first name.":"Nobody here."}</div>}
       {shown.slice(0,limit).map(c=>{
         const text=lcFill(msg,c);
         const sms="sms:"+c.phone+"?&body="+encodeURIComponent(text);
