@@ -1871,6 +1871,182 @@ function AdminLogin({onLogin}) {
   );
 }
 
+// ── Launch contacts: Christine's client list (from the Treatwell export) with one-tap Text / WhatsApp buttons.
+// Messages are sent from Christine's own phone; the app only prepares them and records who has been messaged.
+const LAUNCH_MSG_DEFAULT = `Hi {first}, it's Christine from Chris 2 Styles Salon 💛
+
+I've just launched the Healthy Hair Club, my new membership for regular hair maintenance, priority booking and member savings, from £39 a month.
+
+Have a look and join here: https://chris2styles.co.uk
+
+Tip: save it to your home screen like an app.
+iPhone: open the link in Safari, tap the Share button (the square with an arrow) then "Add to Home Screen".
+Android: open the link in Chrome, tap the ⋮ menu at the top right then "Add to Home screen".
+
+Reply STOP if you'd rather not hear from me.`;
+
+function lcMobile(p){
+  let d=String(p||"").replace(/\D/g,"");
+  if(d.startsWith("0044"))d=d.slice(2);
+  if(d.startsWith("44"))d="0"+d.slice(2);
+  if(d.length===10&&d.startsWith("7"))d="0"+d;
+  return /^07\d{9}$/.test(d)?d:null;
+}
+function lcName(first,last,full){
+  let n=((first||"")+" "+(last||"")).trim()||String(full||"").trim();
+  n=n.replace(/^[|\W_]+/,"").trim();
+  if(!/[A-Za-z]/.test(n))return "";
+  return n.split(/\s+/).map(w=>w===w.toLowerCase()?w.charAt(0).toUpperCase()+w.slice(1):w).join(" ");
+}
+function lcParseCsv(text){
+  const rows=[];let row=[],f="",q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+    else if(c==='"')q=true; else if(c===","){row.push(f);f="";}
+    else if(c==="\n"){row.push(f);rows.push(row);row=[];f="";} else if(c!=="\r")f+=c;}
+  if(f||row.length){row.push(f);rows.push(row);}
+  const head=(rows.shift()||[]).map(h=>h.replace(/^﻿/,"").trim().toLowerCase());
+  return rows.filter(r=>r.length>1).map(r=>Object.fromEntries(head.map((h,i)=>[h,r[i]||""])));
+}
+const lcFirst=n=>(n||"").split(/\s+/)[0]||"";
+const lcFill=(tpl,c)=>tpl.replace(/\{first\}/g,lcFirst(c.name)||"there");
+const lcWhen=t=>t?new Date(t).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):"";
+
+function LaunchContacts(){
+  const [list,setList]=useState(null);
+  const [err,setErr]=useState("");
+  const [who,setWho]=useState("optin");     // optin | all | other
+  const [show,setShow]=useState("todo");    // todo | sent | all
+  const [q,setQ]=useState("");
+  const [limit,setLimit]=useState(50);
+  const [msg,setMsg]=useState(()=>{try{return localStorage.getItem("hhc_launch_msg")||LAUNCH_MSG_DEFAULT;}catch(e){return LAUNCH_MSG_DEFAULT;}});
+  const [editMsg,setEditMsg]=useState(false);
+  const [importing,setImporting]=useState("");
+
+  async function load(){
+    setErr("");const all=[];
+    for(let from=0;;from+=1000){
+      const {data,error}=await supabase.from("launch_contacts").select("id,name,phone,opt_in,bookings,sms_sent_at,wa_sent_at").order("name",{ascending:true,nullsFirst:false}).range(from,from+999);
+      if(error){setErr("Could not load contacts: "+error.message);setList([]);return;}
+      all.push(...data);if(data.length<1000)break;
+    }
+    setList(all);
+  }
+  React.useEffect(()=>{load();},[]);
+  function saveMsg(v){setMsg(v);try{localStorage.setItem("hhc_launch_msg",v);}catch(e){}}
+
+  async function importFile(file){
+    if(!file)return;setImporting("Reading file...");
+    try{
+      const rows=lcParseCsv(await file.text());const by={};
+      for(const r of rows){
+        const m=lcMobile(r["phone"]);if(!m)continue;
+        const rec={name:lcName(r["first name"],r["last name"],r["name"])||null,phone:m,email:(r["email"]||"").trim().toLowerCase()||null,
+          opt_in:(r["opt-in state"]||"").trim().toUpperCase()==="Y",bookings:parseInt(r["number of bookings"]||"0",10)||0,first_seen:(r["created date time"]||"").slice(0,10)||null};
+        const o=by[m];
+        if(o){o.opt_in=o.opt_in||rec.opt_in;o.bookings+=rec.bookings;o.name=o.name||rec.name;o.email=o.email||rec.email;}else by[m]=rec;
+      }
+      const recs=Object.values(by);
+      for(let i=0;i<recs.length;i+=400){
+        setImporting("Saving "+Math.min(i+400,recs.length)+" of "+recs.length+"...");
+        const {error}=await supabase.from("launch_contacts").upsert(recs.slice(i,i+400),{onConflict:"phone"});
+        if(error)throw error;
+      }
+      setImporting("Imported "+recs.length+" people with mobile numbers ("+recs.filter(r=>r.opt_in).length+" opted in).");
+      await load();
+    }catch(e){setImporting("Import failed: "+(e.message||e));}
+  }
+
+  async function mark(c,field,on=true){
+    const t=on?new Date().toISOString():null;
+    setList(l=>l.map(x=>x.id===c.id?{...x,[field]:t}:x));
+    const {error}=await supabase.from("launch_contacts").update({[field]:t}).eq("id",c.id);
+    if(error)setErr("Could not save: "+error.message);
+  }
+
+  if(!list)return <div style={{color:"#999",fontSize:13}}>Loading contacts...</div>;
+  const sent=c=>!!(c.sms_sent_at||c.wa_sent_at);
+  const pool=list.filter(c=>who==="all"||(who==="optin"?c.opt_in:!c.opt_in));
+  const ql=q.trim().toLowerCase(),qd=q.replace(/\D/g,"");
+  const shown=pool.filter(c=>(show==="all"||(show==="sent"?sent(c):!sent(c)))&&(!ql||(c.name||"").toLowerCase().includes(ql)||(qd&&c.phone.includes(qd))));
+  const doneN=pool.filter(sent).length;
+  const chip=(on,label,fn)=><button onClick={fn} style={{background:on?G.goldPale:"#fff",border:"1px solid "+(on?G.gold:G.creamDk),color:on?G.goldDk:"#777",borderRadius:20,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>{label}</button>;
+  const box={background:"#fff",borderRadius:14,border:"1px solid "+G.creamDk,padding:"16px 18px",marginBottom:14};
+
+  return (
+    <div>
+      <div style={{color:G.goldDk,fontSize:10,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Launch</div>
+      <h2 style={{fontFamily:SR,fontSize:22,color:"#1A1A1A",margin:"0 0 6px",fontStyle:"italic",fontWeight:400}}>Launch Contacts</h2>
+      <p style={{color:"#888",fontSize:12,margin:"0 0 16px",lineHeight:1.6}}>Open this page on your phone. Tap <strong>Text</strong> or <strong>WhatsApp</strong> next to a client: the message opens ready on your phone, you press send, and they're ticked off here.</p>
+      {err&&<div style={{background:G.errBg,color:G.err,borderRadius:8,padding:"10px 12px",fontSize:12,marginBottom:12}}>{err}</div>}
+
+      <div style={box}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,flexWrap:"wrap"}}>
+          <div style={{fontWeight:700,color:"#1A1A1A",fontSize:15}}>{doneN} of {pool.length} messaged</div>
+          <div style={{color:"#999",fontSize:11}}>{list.length} contacts in total · {list.filter(c=>c.opt_in).length} opted in</div>
+        </div>
+        <div style={{height:8,background:G.creamLt,borderRadius:4,marginTop:10,overflow:"hidden"}}><div style={{width:(pool.length?doneN/pool.length*100:0)+"%",height:"100%",background:"linear-gradient(90deg,"+G.goldLt+","+G.gold+")"}}/></div>
+      </div>
+
+      <div style={box}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <div style={{fontWeight:700,color:"#1A1A1A",fontSize:14}}>Your message</div>
+          <button onClick={()=>setEditMsg(!editMsg)} style={{background:"none",border:"none",color:G.goldDk,fontSize:12,fontWeight:700,cursor:"pointer"}}>{editMsg?"Done":"Edit"}</button>
+        </div>
+        {editMsg?(
+          <div>
+            <textarea value={msg} onChange={e=>saveMsg(e.target.value)} rows={12} style={{width:"100%",boxSizing:"border-box",marginTop:10,border:"1px solid "+G.creamDk,borderRadius:8,padding:10,fontSize:13,fontFamily:BD,lineHeight:1.5}}/>
+            <div style={{display:"flex",justifyContent:"space-between",color:"#999",fontSize:11,marginTop:6}}><span>{"{first}"} becomes the client's first name.</span><button onClick={()=>saveMsg(LAUNCH_MSG_DEFAULT)} style={{background:"none",border:"none",color:"#999",fontSize:11,textDecoration:"underline",cursor:"pointer"}}>Reset</button></div>
+          </div>
+        ):(
+          <div style={{whiteSpace:"pre-wrap",color:"#555",fontSize:12,lineHeight:1.55,marginTop:8,background:G.creamLt,borderRadius:8,padding:"10px 12px"}}>{lcFill(msg,{name:"Sarah"})}</div>
+        )}
+      </div>
+
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+        {chip(who==="optin","Opted in",()=>{setWho("optin");setLimit(50);})}
+        {chip(who==="other","Not opted in",()=>{setWho("other");setLimit(50);})}
+        {chip(who==="all","Everyone",()=>{setWho("all");setLimit(50);})}
+      </div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+        {chip(show==="todo","Not sent yet",()=>{setShow("todo");setLimit(50);})}
+        {chip(show==="sent","Sent",()=>{setShow("sent");setLimit(50);})}
+        {chip(show==="all","All",()=>{setShow("all");setLimit(50);})}
+      </div>
+      <input value={q} onChange={e=>{setQ(e.target.value);setLimit(50);}} placeholder="Search name or number" style={{width:"100%",boxSizing:"border-box",border:"1px solid "+G.creamDk,borderRadius:8,padding:"10px 12px",fontSize:13,marginBottom:12}}/>
+
+      {shown.length===0&&<div style={{...box,color:"#AAA",fontSize:13}}>{list.length===0?"No contacts yet. Use Import below to add your Treatwell export.":"Nobody here."}</div>}
+      {shown.slice(0,limit).map(c=>{
+        const text=lcFill(msg,c);
+        const sms="sms:"+c.phone+"?&body="+encodeURIComponent(text);
+        const wa="https://wa.me/44"+c.phone.slice(1)+"?text="+encodeURIComponent(text);
+        return (
+          <div key={c.id} style={{background:"#fff",borderRadius:12,border:"1px solid "+(sent(c)?"#C8E6C9":G.creamDk),padding:"12px 14px",marginBottom:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"baseline"}}>
+              <div style={{fontWeight:700,color:"#1A1A1A",fontSize:14}}>{c.name||"(no name)"}</div>
+              <div style={{color:"#999",fontSize:12,whiteSpace:"nowrap"}}>{c.phone.replace(/^(\d{5})(\d{6})$/,"$1 $2")}</div>
+            </div>
+            <div style={{color:"#AAA",fontSize:11,marginTop:2}}>{c.bookings} booking{c.bookings===1?"":"s"}{c.opt_in?"":" · not opted in"}</div>
+            <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap",alignItems:"center"}}>
+              <a href={sms} onClick={()=>mark(c,"sms_sent_at")} style={{flex:1,minWidth:110,textAlign:"center",textDecoration:"none",background:c.sms_sent_at?"#fff":"linear-gradient(135deg,"+G.goldLt+","+G.gold+")",border:c.sms_sent_at?"1px solid "+G.creamDk:"none",color:c.sms_sent_at?"#888":"#1A1A1A",borderRadius:8,padding:"10px 0",fontSize:13,fontWeight:700}}>{c.sms_sent_at?"Texted "+lcWhen(c.sms_sent_at)+" ✓":"Text"}</a>
+              <a href={wa} target="_blank" rel="noopener noreferrer" onClick={()=>mark(c,"wa_sent_at")} style={{flex:1,minWidth:110,textAlign:"center",textDecoration:"none",background:c.wa_sent_at?"#fff":"#25D366",border:c.wa_sent_at?"1px solid "+G.creamDk:"none",color:c.wa_sent_at?"#888":"#fff",borderRadius:8,padding:"10px 0",fontSize:13,fontWeight:700}}>{c.wa_sent_at?"WhatsApp "+lcWhen(c.wa_sent_at)+" ✓":"WhatsApp"}</a>
+              {sent(c)&&<button onClick={()=>{mark(c,"sms_sent_at",false);mark(c,"wa_sent_at",false);}} style={{background:"none",border:"none",color:"#AAA",fontSize:11,textDecoration:"underline",cursor:"pointer"}}>Undo</button>}
+            </div>
+          </div>
+        );
+      })}
+      {shown.length>limit&&<button onClick={()=>setLimit(limit+50)} style={{width:"100%",background:"#fff",border:"1px solid "+G.gold,color:G.goldDk,borderRadius:8,padding:"12px 0",fontSize:13,fontWeight:700,cursor:"pointer",marginTop:4}}>Show next 50 ({shown.length-limit} more)</button>}
+
+      <div style={{...box,marginTop:24}}>
+        <div style={{fontWeight:700,color:"#1A1A1A",fontSize:14,marginBottom:4}}>Import from Treatwell</div>
+        <p style={{color:"#888",fontSize:12,margin:"0 0 10px",lineHeight:1.6}}>In Treatwell Connect go to Clients → Export, then choose that file here. People already on the list keep their "sent" ticks; new people are added.</p>
+        <input type="file" accept=".csv,text/csv" aria-label="Treatwell client export file" onChange={e=>importFile(e.target.files&&e.target.files[0])} style={{fontSize:12}}/>
+        {importing&&<div style={{marginTop:10,color:"#5A4A2A",fontSize:12}}>{importing}</div>}
+      </div>
+    </div>
+  );
+}
+
 function AdminDashboard({onLogout}) {
   const [tab,setTab]=useState("overview");
   const [sel,setSel]=useState(null);
@@ -1981,6 +2157,7 @@ function AdminDashboard({onLogout}) {
     {id:"addons",label:"Add-ons"},
     {id:"availability",label:"Availability"},
     {id:"inbox",label:"Messages"+(unread>0?" ("+unread+")":"")},
+    {id:"launch",label:"Launch Contacts"},
   ];
 
   return (
@@ -2255,6 +2432,7 @@ function AdminDashboard({onLogout}) {
           </div>
         )}
 
+        {tab==="launch"&&<LaunchContacts/>}
         {tab==="inbox"&&(
           <div>
             <div style={{color:G.goldDk,fontSize:10,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Messages</div>
