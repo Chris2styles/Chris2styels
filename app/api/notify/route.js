@@ -67,6 +67,12 @@ export async function POST(req) {
       )
     }
 
+    if (type === 'appointment_reminder') {
+      await send(data.clientEmail, `Reminder: your appointment ${data.when} at ${data.time} — Healthy Hair Club`,
+        emailWrap(`<h2>See you ${data.when}!</h2><p>Hi ${data.clientName}, this is a friendly reminder of your appointment at Chris 2 Styles Salon.</p><div style='background:#fff;border-radius:8px;padding:20px;border:1px solid #EDE8DF'><p><strong>Service:</strong> ${data.service}</p><p><strong>Date:</strong> ${data.date}</p><p><strong>Time:</strong> ${data.time}</p><p><strong>Where:</strong> 87 Mitcham Lane, Streatham, London SW16 6LY</p></div><p style='color:#888;font-size:13px'>Need to change your appointment? Please call us on 020 3754 7889.</p>${btn('View My Dashboard', URL)}`)
+      )
+    }
+
     if (type === 'booking_declined') {
       await send(data.clientEmail, 'Appointment Update — Healthy Hair Club',
         emailWrap(`<h2>Appointment Update</h2><p>Hi ${data.clientName}, unfortunately we were unable to confirm your requested appointment at this time.</p><p>Please log in to choose another available appointment.</p>${btn('Choose Another Appointment', URL)}`)

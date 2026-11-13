@@ -1273,6 +1273,9 @@ function ClientBooking({onBack,onDone}) {
   const [compAddon,setCompAddon]=React.useState('');
   const [bookErr,setBookErr]=React.useState('');
   const [submitting,setSubmitting]=React.useState(false);
+  const [mobile,setMobile]=React.useState('');
+  React.useEffect(()=>{(async()=>{try{const {data:{session}}=await supabase.auth.getSession();const em=session?.user?.email;if(!em)return;
+    const {data}=await supabase.from('clients').select('phone').ilike('email',em).maybeSingle();if(data?.phone)setMobile(data.phone);}catch(e){}})();},[]);
   React.useEffect(()=>{
     fetch('/api/slots').then(r=>r.json()).then(d=>{
       setRealSlots((d.slots||[]).map(s=>({id:s.id,day:String(s.slot_date).slice(0,10),date:fmtSlotDate(s.slot_date),time:String(s.slot_time).slice(0,5),avail:!s.booked})));
@@ -1469,15 +1472,23 @@ function ClientBooking({onBack,onDone}) {
                 </div>
               )}
             </div>
+            <div style={{marginBottom:16}}>
+              <label htmlFor="bk-mobile" style={{display:"block",fontSize:12,fontWeight:700,color:"#1A1A1A",marginBottom:6}}>Your mobile number</label>
+              <input id="bk-mobile" type="tel" inputMode="tel" autoComplete="tel" value={mobile} onChange={e=>setMobile(e.target.value)} placeholder="e.g. 07700 900123"
+                style={{width:"100%",boxSizing:"border-box",border:"1px solid "+G.creamDk,borderRadius:4,padding:"12px 14px",fontSize:15}}/>
+              <div style={{color:"#999",fontSize:11,marginTop:5,lineHeight:1.5}}>We'll text and email you a reminder 24 hours before your appointment.</div>
+            </div>
             <div style={{background:G.creamLt,borderRadius:3,padding:14,marginBottom:20,border:"1px solid "+G.creamDk}}>
               <p style={{fontSize:12,color:"#666",margin:0,lineHeight:1.7}}>Your appointment will be confirmed by Christine once booked.</p>
             </div>
             <div style={{display:"flex",gap:10}}>
               <Btn ghost onClick={()=>setStep(3)}>Back</Btn>
               <div style={{flex:1}}>{bookErr&&<div style={{background:G.errBg,color:G.err,padding:"10px 14px",borderRadius:4,marginBottom:10,fontSize:13}}>{bookErr}</div>}<Btn full onClick={async()=>{
-            if(submitting)return; setSubmitting(true); setBookErr('');
+            if(submitting)return;
+            if(mobile.replace(/\D/g,'').length<10){setBookErr('Please add your mobile number so we can send your appointment reminder.');return;}
+            setSubmitting(true); setBookErr('');
             try{
-              const res=await authFetch('/api/book',{method:'POST',body:JSON.stringify({service:svc,slotId:slot,addons:adds.map(id=>ADDONS.find(a=>a.id===id)?.name||id),complimentaryAddon:compAddon?(ADDONS.find(a=>a.id===compAddon)?.name||null):null})});
+              const res=await authFetch('/api/book',{method:'POST',body:JSON.stringify({phone:mobile,service:svc,slotId:slot,addons:adds.map(id=>ADDONS.find(a=>a.id===id)?.name||id),complimentaryAddon:compAddon?(ADDONS.find(a=>a.id===compAddon)?.name||null):null})});
               const out=await res.json().catch(()=>({}));
               if(!res.ok){setBookErr(out.error||'Booking failed. Please try again.');setSubmitting(false);return;}
             }catch(e){setBookErr('Booking failed. Please check your connection and try again.');setSubmitting(false);return;}

@@ -6,11 +6,14 @@ export async function POST(req) {
     const user = await getUserFromReq(req)
     if (!user) return NextResponse.json({ error: 'Please sign in to book.' }, { status: 401 })
 
-    const { service, slotId, addons, complimentaryAddon } = await req.json()
+    const { service, slotId, addons, complimentaryAddon, phone } = await req.json()
     if (!service || !slotId) return NextResponse.json({ error: 'Choose a service and a time.' }, { status: 400 })
 
     const { data: client } = await supabase.from('clients').select('id, full_name, email').ilike('email', user.email).maybeSingle()
     if (!client) return NextResponse.json({ error: 'We could not find your membership.' }, { status: 404 })
+    // Mobile number for appointment reminders (asked for on the booking screen).
+    const ph = String(phone || '').replace(/[^\d+ ]/g, '').trim().slice(0, 20)
+    if (ph.replace(/\D/g, '').length >= 10) await supabase.from('clients').update({ phone: ph }).eq('id', client.id)
 
     const { data: membership } = await supabase.from('memberships').select('package, status')
       .eq('client_id', client.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
