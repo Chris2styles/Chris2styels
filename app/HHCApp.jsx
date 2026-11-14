@@ -382,6 +382,7 @@ const ADDONS=[
   {id:"b10",cat:"Colour and Toning",name:"Ombre Colour Medium Hair",price:55},
   {id:"b11",cat:"Colour and Toning",name:"Ombre Colour Long Hair",price:65},
   {id:"b12",cat:"Colour and Toning",name:"Roots Bleach and Tone",price:90},
+  {id:"b13",cat:"Colour and Toning",name:"Semi Permanent Colour with Treatment",price:120},
   {id:"c1",cat:"Hair Treatments",name:"Olaplex Treatment",price:95},
   {id:"c2",cat:"Hair Treatments",name:"Oil Treatment with Blow Dry",price:65},
   {id:"c3",cat:"Hair Treatments",name:"Keratin Blow Dry Short Hair",price:200},
